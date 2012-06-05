@@ -1,0 +1,144 @@
+	canvas {
+		position:absolute;
+		padding-left: 0px;
+		padding-right: 0px;
+		margin-left: 0px;
+		margin-right: 0px;
+		/*display: block; */
+	}
+
+	.ing-menu {
+		margin-left:auto;
+		margin-right:auto;
+		display: block;
+		background-color: black;
+		color:white;	
+	}
+	
+	.ing-menu-show{
+		position:absolute;
+		top:0;
+		left:0;
+		z-index:1;
+		hidden:true;
+	}
+
+	.menu-item {
+		padding-left: 5px;
+		padding-right: 5px;
+		margin-left: 5px;
+		margin-right: 5px;
+		margin-top: 5px;
+		margin-bottom: 5px;
+		background-color:white;
+		color: black;
+		border-style:solid;
+		border-width:2px;
+		border-color:LightSlateGray;
+		float:left;
+	}
+	
+	.menu-item-hover {
+		padding-left: 5px;
+		padding-right: 5px;
+		margin-left: 5px;
+		margin-right: 5px;
+		margin-top: 5px;
+		margin-bottom: 5px;
+		background-color:white;
+		color: black;
+		border-style:solid;
+		border-width:2px;
+		border-color:LightSlateGray;
+		float:left;
+		cursor:pointer;
+		box-shadow:2px 2px 1px black;
+	}
+
+	.menu-item-header{
+		background-color:black;
+		color: white;
+		margin-bottom: 1px;
+		margin-top: 0px;
+		margin-left: 0px;
+		padding-bottom: 0px;
+		padding-top:0px;
+		padding-left: 10px;
+		padding-right: 10px;
+		margin-right: 10px;
+		float:left;
+	}
+	
+	.menu-div{
+		margin-left: .2%;
+		margin-right: 0.2%;
+		margin-top: 0.2%;
+		margin-bottom: 0.2%;
+	}
+	
+	.liquors-container{
+		position:absolute;
+		text-align:left;
+		background-color:gray;
+		margin-top:auto;
+		margin-bottom:auto;
+		color:white;
+		opacity:0.5;
+	}
+	
+	.liquor-ing{
+		position:static;
+		text-align:left;
+		display:block;
+	}
+	
+	.mixer-ing{
+		position:static;
+		text-align:right;
+	}
+	
+	.mixers-container{
+		position:absolute;
+		text-align:right;
+		background-color:gray;	
+		color:white;
+		margin-top:auto;
+		margin-bottom:auto;
+		opacity:0.5;
+	}
+	
+	.ing-item-hover{
+		cursor:pointer;
+	
+	}
+	
+	.cocktail-container{
+		position:absolute;
+	}
+	
+	.cocktail{
+		position:absolute;	
+		color:white;
+		text-align:center;
+	}
+	
+	.cocktail-normal{
+		font-size:1em;
+		color:white;
+		margin:5px;
+		padding:5px;
+	}
+	
+	.cocktail-highlight{
+		font-size:2em;
+		color:white;
+		margin:5px;
+		padding:5px;
+	}
+	
+	.cocktail-nonhighlight{
+		font-size:0.8em;
+		color:white;
+		margin:5px;
+		padding:5px;
+	}
