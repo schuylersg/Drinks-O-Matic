@@ -662,6 +662,9 @@ Cocktail.prototype.hasMixer = function(mixerName){
     return false;
 };
 
+$(window).resize(function() {
+  	sizeAndPositionMainElements();;
+});
 
 /*********************************************************
 /Application functions
@@ -670,12 +673,8 @@ $(document).ready(function() {
 	//function variables
 	var i, j;
 	
-	var docHeight = $(document).height();
-	var docWidth = $(document).width();
-	
-	//get the canvas and context from the html and store in global variables
-	canvas = document.getElementById('drink-canvas');  
-	ctx = canvas.getContext('2d'); 
+	var docHeight = $(window).height();
+	var docWidth = $(window).width(); 
 	
 	//disable the ability to select text
 	$("div").disableSelection();
@@ -688,29 +687,10 @@ $(document).ready(function() {
         ingredientList.addItems(c);
     });
 
-	$("#liquor-menu-span").css("left", 20 + 'px');
-	$("#liquor-menu-span").css("top", 0 + 'px');
-	$("#liquor-menu-span").css("width", (docWidth/2 - 40) + 'px');
-	
-	$("#mixer-menu-span").css("left", (docWidth/2+ 20) + 'px');
-	$("#mixer-menu-span").css("top", 0 + 'px');
-	$("#mixer-menu-span").css("width", (docWidth/2 - 40) + 'px');
-
 	//Display ingredient list
 	displayIngredients();	
 	
-	resizeIngredientMenu();
-	
-	$("#ing-menu-div").css('top', (docHeight - $("#liquor-menu-span").height()-5) + 'px');
-	$("#ing-menu-div").css('left', 0);
-	
-	$(".ing-container").css("height", (docHeight - title_image_height - $("#liquor-menu-span").height()) + 'px');
-	$(".ing-container").css("width", "400px");
-	$(".liquors-container").css("top", title_image_height + 'px');
-	$(".liquors-container").css("left", '0 px');
-	
-	$(".mixers-container").css("top", title_image_height + 'px');
-	$(".mixers-container").css("left", docWidth-$(".mixers-container").width() + 'px');
+	sizeAndPositionMainElements();
 	
 	//make the liquors-container sortable
 	$('.liquors-container').sortable({
@@ -770,37 +750,55 @@ $(document).ready(function() {
 		setElementPositions(false);
 	});	
 	
-	calculateMainElementSizes();
-	
-	var uC = getUsableCanvas();
-	
-	$(canvas).width(docWidth);
-	$(canvas).height(uC.height);
-	$(canvas).css("top", uC.top + "px");
-	$(canvas).css("left", 0 + "px");
-	
-	$('.cocktail-container').width(docWidth);
-	$('.cocktail-container').height(uC.height);
-	$('.cocktail-container').css("top", uC.top + "px");
-	$('.cocktail-container').css("left", "0px");
 	
 	var cH, cW;
-	cH = canvas.height;	
-	cW = canvas.width;	
+	cH = $('#drink-canvas').height();
+	cW = $('#drink-canvas').width();
+	console.log(cH + ' ' + cW);
 	
+	//get the canvas and context from the html and store in global variables
+	canvas = document.getElementById('drink-canvas');  
+	ctx = canvas.getContext('2d');
+	
+/*
 	var color ={r:250, g:250, b:250};
-	drawBoundingBox([cW/2-250, cH/2-100, cW/2+250, cH/2+100], color, 0.9);
-	ctx.fillStyle = "black";
+	//drawBoundingBox([cW/2-250, cH/2-100, cW/2+250, cH/2+100], color, 0.9);
+	ctx.fillStyle = "white";
 	ctx.textAlign = "center";
 	ctx.font="20px Arial";
 	ctx.fillText("Double click or drag ingredients down here. You might", cW/2, cH/2-20);
 	ctx.fillText("need to draq quite a few to start forming cocktails.", cW/2, cH/2+20);
-	
+	*/
 });
 
-function getUsableCanvas(){
+function sizeAndPositionMainElements(){
+	var docHeight = $(window).height();
+	var docWidth = $(window).width();
+	
+	//set width of ingredients menu
+	$("#liquor-menu-span").css("left", 20 + 'px');
+	$("#liquor-menu-span").css("width", (docWidth/2 - 40) + 'px');
+	
+	$("#mixer-menu-span").css("left", (docWidth/2+ 20) + 'px');
+	$("#mixer-menu-span").css("width", (docWidth/2 - 40) + 'px');
+	
+	//calculate height of ingredients menu
+	resizeIngredientMenu();
 
-	return{top:title_image_height, height:(docHeight - title_image_height - $("#liquor-menu-span").height())};
+	//set the vertical position of the ingredient menu
+	$("#ing-menu-div").css('top', (docHeight - $("#ing-menu-div").outerHeight()-5) + 'px');
+
+	//set the size and position of selected liquor and mixer containers
+	$(".ing-container").css("height", (docHeight - title_image_height - $("#ing-menu-div").outerHeight()) + 'px');
+	$(".ing-container").css("top", title_image_height + 'px');
+	
+	$('#drink-canvas').css("top", title_image_height + "px");
+	$('#drink-canvas').attr("height", $(".ing-container").outerHeight());
+	$('#drink-canvas').attr("width",docWidth);
+	$('.cocktail-container').css("top", title_image_height + "px");
+	$('.cocktail-container').height($(".ing-container").outerHeight());
+	$('.cocktail-container').css("left", $('.liquors-container').outerWidth() + 'px');
+	$('.cocktail-container').css("right", $('.mixers-container').outerWidth() + 'px');
 }
 
 function ingredientDropped(event, item){
@@ -819,7 +817,10 @@ function ingredientDropped(event, item){
 	}else{
 		iType = 'Mixer';
 		$(item).attr("class", "mixer-ing mixer");
+		var docWidth = $(window).width();
 		$(item).insertBefore("#mixer-placeholder");
+	//	$(".mixers-container").width("auto");
+	//	$(".mixers-container").css("right", (docWidth-$(".mixers-container").outerWidth()-10) + 'px');
 	}
 	
 	$(item).unbind('mouseenter mouseleave click');
@@ -855,6 +856,7 @@ function ingredientDropped(event, item){
 				$(item).css("z-index","3000");
 			},
 		});
+		
 	}
 			
 	loadCocktails();
@@ -884,6 +886,9 @@ function displayIngredients(){
 	}
 	
 	$("#mixer-menu-span").html(htmlStr);
+	$('.menu-item').each(function(index) {
+		$(this).width($(this).outerWidth());
+	});
 }
 
 function resizeIngredientMenu(){
@@ -892,35 +897,24 @@ function resizeIngredientMenu(){
 	
 	$('#liquor-menu-span').height('auto');
 	$('#mixer-menu-span').height('auto');
-	$('#main-menu-div').height('auto');
+	$('#ing-menu-div').height('auto');
 	
 	menuH = $('#mixer-menu-span').height();
 	menuL = $('#liquor-menu-span').height();
 	if(menuH>menuL){
 		$('#liquor-menu-span').height(menuH);
-		$('#main-menu-div').height(menuH);
+		$('#ing-menu-div').height(menuH);
 	}else{
 		$('#mixer-menu-span').height(menuL);
-		$('#main-menu-div').height(menuL);
+		$('#ing-menu-div').height(menuL);
 	}
 }
 
-function calculateMainElementSizes(){
-	//console.log("Elements");
-	//$("#drink-canvas").width(window.innerWidth-8+"px");
-	//$("#drink-canvas").height((window.innerHeight - $("#ing-menu-div").height() - 8) +"px");
-	//ctx.canvas.width = $("#drink-canvas").width();
-	//ctx.canvas.height = $("#drink-canvas").height();
-	//$('.liquors-container').css("left", $("#drink-canvas").position().left + "px");
-	//$('.liquors-container').height($("#drink-canvas").height());
-	//$('.mixers-container').css("right", "8px");
-	//$('.mixers-container').height($("#drink-canvas").height());
-}
 
 function setElementPositions(doOptimize){
 	
-	var docHeight = $(document).height();
-	var docWidth = $(document).width();
+	var docHeight = $(window).height();
+	var docWidth = $(window).width();
 	
 	if(typeof(doOptimize)==='undefined'){
 		doOptimize = true;
@@ -930,52 +924,28 @@ function setElementPositions(doOptimize){
 	
 	var cH, cW, i, j;
 	
-	var menuL, menuM;
-	
-	$('#liquor-menu-span').height('auto');
-	$('#mixer-menu-span').height('auto');
-	
-	menuH = $('#mixer-menu-span').height();
-	menuL = $('#liquor-menu-span').height();
-	if(menuH>menuL){
-		$('#liquor-menu-span').height(menuH);
-		$('#main-menu-div').height(menuH);
-	}else{
-		$('#mixer-menu-span').height(menuL);
-		$('#main-menu-div').height(menuL);
-	}	
-	
-	$("#ing-menu-div").css('top', (docHeight - $("#liquor-menu-span").height()-5) + 'px');
-	$("#ing-menu-div").css('left', 0);
-	
-	$(".ing-container").css("height", (docHeight - title_image_height - $("#liquor-menu-span").height()) + 'px');
-	$(".ing-container").css("width", "400px");
-	$(".liquors-container").css("top", title_image_height + 'px');
-	$(".liquors-container").css("left", '0 px');
-	
-	$(".mixers-container").css("top", title_image_height + 'px');
-	$(".mixers-container").css("left", docWidth-$(".mixers-container").width() + 'px');
+	sizeAndPositionMainElements();
 	
 	
-	
+	/*
 	var uC = getUsableCanvas();
 	
 	ctx.canvas.width  = docWidth;
 	ctx.canvas.height = uC.height;
 	
-	/*
+	
 	if(!$("#ing-menu-show").is(':hidden')){
 		ctx.canvas.height = (window.innerHeight - $("#ing-menu-show").height())*0.95;
 	}else{
 		ctx.canvas.height = (window.innerHeight - $("#ing-menu-div").height())*0.95;
 	}
-	*/
+	
 	cH = canvas.height;	
 	cW = canvas.width;
 	
 	$('.cocktail-container').width($(canvas).width());
 	$('.cocktail-container').height($(canvas).height());
-
+	*/
 	
 	var mIndexes = ingredientList.getIndexesOfType('Mixer');
 	var lIndexes = ingredientList.getIndexesOfType('Liquor');	
@@ -998,17 +968,9 @@ function setElementPositions(doOptimize){
 }
 
 function drawDrinkCanvas(){
+/*
 	ctx.clearRect(0,0,canvas.width, canvas.height);
 
-/*	
-	ctx.canvas.width  = window.innerWidth*0.95;
-	
-	if($("#ing-menu-div").is(':hidden')){
-		ctx.canvas.height = (window.innerHeight - $("#ing-menu-show").height())*0.95;
-	}else{
-		ctx.canvas.height = (window.innerHeight - $("#ing-menu-div").height())*0.95;
-	}
-	*/
 	var cH, cW;
 	cH = canvas.height;	
 	cW = canvas.width;	
@@ -1023,6 +985,7 @@ function drawDrinkCanvas(){
 	}
 	writeCocktailsAndPaths();
 	//writeIngredientText();
+	*/
 }
 
 function loadCocktailDB(){
@@ -1150,6 +1113,9 @@ function loadCocktailDB(){
 
 
 function writeCocktailsAndPaths(){
+	var canvas = document.getElementById('drink-canvas');  
+	var ctx = canvas.getContext('2d');
+	
 	ctx.textAlign="center";
 	ctx.textBaseline = "middle";
     var ingPos, alpha, tempFont, ctWidth;
@@ -1237,7 +1203,6 @@ function writeCocktailsAndPaths(){
 
 //Recursive function to optimize ingredient layout
 function optimizeIngredientOrderR(iOrder, lIndexes, mIndexes, oldEffNum, rDepth){
-	
 	
 	var initialEffNum = oldEffNum;
 	var newEffNum;// = ingredientList.calcEfficiency(['Liquor', 'Mixer'], weights);
@@ -1628,6 +1593,8 @@ function writeIngredientText(){
  }
 
 function drawBoundingBox(box, color, trans){
+	var canvas = document.getElementById('drink-canvas');  
+	var ctx = canvas.getContext('2d');
 	//alert(color.text + ' rgba('+color.r+','+color.g+','+color.b+','+trans+')');
 	var cRad = Math.min((box[2]-box[0])/2,(box[3]-box[1])/2, 10);
 	ctx.fillStyle = 'rgba('+color.r+','+color.g+','+color.b+','+trans+')';

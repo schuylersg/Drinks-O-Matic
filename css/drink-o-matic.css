@@ -1,10 +1,5 @@
-	canvas {
+	canvas{
 		position:absolute;
-		padding-left: 0px;
-		padding-right: 0px;
-		margin-left: 0px;
-		margin-right: 0px;
-		/*display: block; */
 	}
 
 	.ing-menu {
@@ -13,7 +8,7 @@
 		position:absolute;
 		top:0;
 		left:0;
-		align: justify;
+		align:justify;
 	}
 	
 	.ing-menu-show{
@@ -63,14 +58,17 @@
 	
 	.menu-div{
 		position:absolute;
+		top:0px;
 	}
 	
 	.ing-container{
 		position:absolute;
 		font-family:SWRomnd;
+		width:auto;
 	}
 	
 	.liquors-container{
+		left:0px;
 		text-align:left;
 		background-color:gray;
 		color:white;
@@ -90,6 +88,7 @@
 	}
 	
 	.mixers-container{
+		right:0px;
 		text-align:right;
 		background-color:gray;	
 		color:white;
