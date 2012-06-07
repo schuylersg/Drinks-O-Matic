@@ -81,7 +81,6 @@ Array.prototype.absSum = function(){
 	var sum = 0;
 	for(i=0; i<this.length; i++)
 		sum = sum + Math.abs(this[i]);
-	
 	return sum;
 }
 
@@ -670,6 +669,9 @@ $(document).ready(function() {
 	//function variables
 	var i, j;
 	
+	var docHeight = $(document).height();
+	var docWidth = $(document).width();
+	
 	//get the canvas and context from the html and store in global variables
 	canvas = document.getElementById('drink-canvas');  
 	ctx = canvas.getContext('2d'); 
@@ -685,10 +687,21 @@ $(document).ready(function() {
         ingredientList.addItems(c);
     });
 
+	$("#liquor-menu-span").css("left", 20 + 'px');
+	$("#liquor-menu-span").css("top", 0 + 'px');
+	$("#liquor-menu-span").css("width", (docWidth/2 - 40) + 'px');
+	
+	$("#mixer-menu-span").css("left", (docWidth/2+ 20) + 'px');
+	$("#mixer-menu-span").css("top", 0 + 'px');
+	$("#mixer-menu-span").css("width", (docWidth/2 - 40) + 'px');
+
 	//Display ingredient list
 	displayIngredients();	
 	
 	resizeIngredientMenu();
+	
+	$("#ing-menu-div").css('top', (docHeight - $("#liquor-menu-span").height()-5) + 'px');
+	$("#ing-menu-div").css('left', 0);
 	
 	//make the liquors-container sortable
 	$('.liquors-container').sortable({
@@ -757,7 +770,7 @@ $(document).ready(function() {
 	var cH, cW;
 	cH = canvas.height;	
 	cW = canvas.width;	
-	
+	/*
 	var color ={r:250, g:250, b:250};
 	drawBoundingBox([cW/2-250, cH/2-100, cW/2+250, cH/2+100], color, 0.9);
 	ctx.fillStyle = "black";
@@ -765,7 +778,7 @@ $(document).ready(function() {
 	ctx.font="20px Arial";
 	ctx.fillText("Double click or drag ingredients down here. You might", cW/2, cH/2-20);
 	ctx.fillText("need to draq quite a few to start forming cocktails.", cW/2, cH/2+20);
-		
+		*/
 });
 
 function ingredientDropped(event, item){
@@ -824,6 +837,7 @@ function ingredientDropped(event, item){
 			
 	loadCocktails();
 	
+	/*
 	if(cocktailList.length>0){
 		var color ={r:250, g:250, b:250};
 		drawBoundingBox([cW/2-200, cH/2-100, cW/2+200, cH/2+100], color, 0.9);
@@ -831,6 +845,7 @@ function ingredientDropped(event, item){
 		ctx.textAlign = "center";
 		ctx.fillText("Optimizing drink layout...\n This may take a minute.", cW/2, cH/2);
 	}
+	*/
 	setTimeout(setElementPositions, 50);	
 }
 
@@ -869,11 +884,11 @@ function resizeIngredientMenu(){
 }
 
 function calculateMainElementSizes(){
-	console.log("Elements");
-	$("#drink-canvas").width(window.innerWidth-8+"px");
-	$("#drink-canvas").height((window.innerHeight - $("#ing-menu-div").height() - 8) +"px");
-	ctx.canvas.width = $("#drink-canvas").width();
-	ctx.canvas.height = $("#drink-canvas").height();
+	//console.log("Elements");
+	//$("#drink-canvas").width(window.innerWidth-8+"px");
+	//$("#drink-canvas").height((window.innerHeight - $("#ing-menu-div").height() - 8) +"px");
+	//ctx.canvas.width = $("#drink-canvas").width();
+	//ctx.canvas.height = $("#drink-canvas").height();
 	$('.liquors-container').css("left", $("#drink-canvas").position().left + "px");
 	$('.liquors-container').height($("#drink-canvas").height());
 	$('.mixers-container').css("right", "8px");
