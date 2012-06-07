@@ -65,12 +65,14 @@
 		position:absolute;
 	}
 	
-	.liquors-container{
+	.ing-container{
 		position:absolute;
+		font-family:SWRomnd;
+	}
+	
+	.liquors-container{
 		text-align:left;
 		background-color:gray;
-		margin-top:auto;
-		margin-bottom:auto;
 		color:white;
 		opacity:0.5;
 	}
@@ -79,6 +81,7 @@
 		position:static;
 		text-align:left;
 		display:block;
+		
 	}
 	
 	.mixer-ing{
@@ -87,12 +90,9 @@
 	}
 	
 	.mixers-container{
-		position:absolute;
 		text-align:right;
 		background-color:gray;	
 		color:white;
-		margin-top:auto;
-		margin-bottom:auto;
 		opacity:0.5;
 	}
 	
