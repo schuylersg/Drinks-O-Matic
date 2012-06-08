@@ -8,7 +8,6 @@
 		position:absolute;
 		top:0;
 		left:0;
-		align:justify;
 	}
 	
 	.ing-menu-show{
@@ -33,6 +32,7 @@
 		border-color:black;
 		float:left;
 		font-family:SWRomnd;
+		font-size:0.7em;
 	}
 	
 	.menu-item-hover {
@@ -50,7 +50,7 @@
 	.menu-item-header{
 		background-color:black;
 		color: yellow;
-		text-shadow:3px 3px red;
+		text-shadow:2px 2px red;
 		font-family:SWRomnd;
 		text-align:center;
 		letter-spacing:20px;
@@ -70,29 +70,25 @@
 	.liquors-container{
 		left:0px;
 		text-align:left;
-		background-color:gray;
 		color:white;
-		opacity:0.5;
 	}
-	
+
 	.liquor-ing{
-		position:static;
 		text-align:left;
-		display:block;
-		
+		position:absolute;
+		color:white;
 	}
 	
 	.mixer-ing{
-		position:static;
-		text-align:right;
+		position:absolute;
+		text-align:left;
+		color:white;
 	}
 	
 	.mixers-container{
 		right:0px;
 		text-align:right;
-		background-color:gray;	
 		color:white;
-		opacity:0.5;
 	}
 	
 	.ing-item-hover{
@@ -102,6 +98,7 @@
 	
 	.cocktail-container{
 		position:absolute;
+		font-family:SWRomnd;
 	}
 	
 	.cocktail{
@@ -114,19 +111,20 @@
 		font-size:1em;
 		color:white;
 		margin:5px;
-		padding:5px;
+		padding:2px 5px;
 	}
 	
 	.cocktail-highlight{
-		font-size:2em;
+		font-size:1.2em;
 		color:white;
 		margin:5px;
-		padding:5px;
+		padding:2px 5px;
 	}
 	
 	.cocktail-nonhighlight{
 		font-size:0.8em;
 		color:white;
 		margin:5px;
-		padding:5px;
+		padding:2px 5px;
+		opacity:0.7;
 	}
