@@ -182,29 +182,6 @@ D2Array.prototype.numColumns = function (){
 	return this.columns;
 }
 
-/*****************************************
-//A class to store x & y positions
-/*****************************************/
-function Position(x, y){
-	this._x = x;
-	this._y = y;
-}
-
-Position.prototype.x = function(val){
-	(val || val==0) ? this._x = val : 0;
-	return this._x;
-}
-
-Position.prototype.y = function(val){
-	(val || val==0) ? this._y = val : 0;
-	return this._y;
-}
-
-Position.prototype.toString = function(){
-	return "(" + this._x + ", " + this._y + ")";
-	
-}
-
 /********************************************************
 //Class to store information about a cocktail
 /*******************************************************/
@@ -218,32 +195,8 @@ function Cocktail(name){
     this.glass = "";
 }
 
-Cocktail.prototype.setHighlightState = function(state){
-	if(this.highlightState == state)
-		return 1;
-	this.highlightState = state;
-	this.updateBoundingBox();
-};
-
-Cocktail.prototype.updateBoundingBox = function(){
-	var w, h;
-	if(this.highlightState == "normal"){
-		w = this.normalSize [0];
-		h = this.normalSize [1];
-		this.boundingBox = [this.position[0] - w/2-ctBoxPadding, this.position[1] - h/2, this.position[0] + w/2+ctBoxPadding, this.position[1] + h/2];
-	} else if (this.highlightState == "highlight"){	
-		w = this.highlightSize [0];
-		h = this.highlightSize [1];
-		this.boundingBox = [this.position[0] - w/2-ctBoxPadding, this.position[1] - h/2, this.position[0] + w/2+ctBoxPadding, this.position[1] + h/2];
-	} else if (this.highlightState == "nonhighlight") {	
-		w = this.nonHighlightSize [0];
-		h = this.nonHighlightSize [1];
-		this.boundingBox = [this.position[0] - w/2-ctBoxPadding, this.position[1] - h/2, this.position[0] + w/2+ctBoxPadding, this.position[1] + h/2];
-	}
-};
-
 Cocktail.prototype.toString = function(){
-	var str = this.name + ' Pos: '+ this.position + "highlight: " + this.highlightState + '\n';
+	var str = this.name;
 	return str;
 };
 
@@ -392,16 +345,19 @@ function ingredientDropped(event, item){
 		cocktailsAdded = loadCocktails();
 		//insert the div of the new ingredient into the document
 		insertNewIngredient(item);		
+		setIngredientPositions();
 		
 		//find the optimum position for the ingredient 
 		if(cocktailsAdded.length > 0){
 			moveNewIngredientToOptimum(item);
 			positionNewCocktails(cocktailsAdded);
+			ingredientOptimizeFlag = true;
+			cocktailOptimizeFlag = true;
 		}		
 		$(item).unbind('mouseenter mouseleave click');
-	}
-	
-	setElementPositions((cocktailsAdded.length>0));	
+	}	
+	setTimeout(setElementPositions, 10);	//use setTimeout because we never want to return here
+											//program should just autonomously run until optimums are found
 }
 
 function loadCocktails(){
@@ -462,7 +418,8 @@ function loadCocktails(){
 						
 					},
 					drag: function() {
-						cocktailOptimizeFlag = true;
+						optimizeCtPositionsForce();
+						//cocktailOptimizeFlag = true;
 						drawDrinkCanvas();
 					},
 					stop: function() {
@@ -489,9 +446,7 @@ function moveNewIngredientToOptimum(item){
 	
 	var mixers = $('.mixer-ing').get();
 	var liquors = $('.liquor-ing').get();
-		
-	//console.log(mixers);	
-		
+			
 	var mIndexes = new Array(mixers.length);
 	var lIndexes = new Array(liquors.length);
 	
@@ -544,12 +499,7 @@ function moveNewIngredientToOptimum(item){
 			}
 		}
 	}
-	
-	
-	console.log(bestPosition);
-	console.log(mySwappableIndexes);
-	console.log(mySwappableIndexes);
-	
+		
 	//update new positions
 	setIngredientPositions();
 }
@@ -573,7 +523,6 @@ function positionNewCocktails(cocktailsAdded){
 			top = top + offset.top;
 		}
 		var ctStr = "#" + cocktailsAdded[c].name.replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-		console.log("Average pos for " + cocktailsAdded.name, left, top);
 		$(ctStr).offset({left:left/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length), top:top/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length)});
 	}
 }
@@ -589,17 +538,6 @@ function insertNewIngredient(item){
 	$(item).data("posIndex", numIng-1);
 	var ingWidth = $(item).outerWidth(true);
 	($(item).hasClass('mixer')) ? $(item).offset({left:canOffset.left+canWidth - ingWidth, top:0}) : $(item).offset({left:canOffset.left, top:0});
-}
-
-function calculateIngredientOffsetFromIndex(){
-	var canHeight = $('#drink-canvas').height();
-	var canOffset = $('#drink-canvas').offset();
-	var ingredients = $('.liquor-ing, .mixer-ing').get();
-	for (var i = 0; i < ingredients.length; i++) {
-		var classStr = ($(ingredients[i]).hasClass('liquor')) ? '.liquor-ing' : '.mixer-ing';
-		var numIng = $(classStr).length;
-		$(ingredients[i]).offset({left:$(ingredients[i]).offset.left, top:canHeight/(numIng+1)*($(ingredients[i]).data("posIndex")+1)+canOffset.top});
-	}
 }
 
 function displayIngredients(){
@@ -655,8 +593,6 @@ function setElementPositions(doOptimize){
 	var mixers = $('.mixer-ing').get();
 	var liquors = $('.liquor-ing').get();
 		
-	//console.log(mixers);	
-		
 	var mIndexes = new Array(mixers.length);
 	var lIndexes = new Array(liquors.length);
 	
@@ -668,90 +604,117 @@ function setElementPositions(doOptimize){
 		lIndexes[$(liquors[i]).data("posIndex")] = $(liquors[i]).data("matrixIndex");
 	}
 	
-	var oldEff;
-	
 	var newEff = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
 	
-	if(optimize && doOptimize){
-		setTimeout(function(){runOptimization(0, lIndexes, mIndexes, oldEff, 1)},10);
+	if(optimize){
+		//probably should disable the ability to add any more ingredients
+		setTimeout(function(){startOptimization(0, lIndexes, mIndexes, Infinity, Infinity)},1);	//never return here
 	}
-	finishSetElementPositions(lIndexes, mIndexes, oldEff, false);
 }
 
-function runOptimization(iteration, lIndexes, mIndexes, oldEff, val){
+function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
+	console.log("Optimziation iteration=",iteration);
 	var maxTries = 20;
-	var minDiff = 0.9999;
-	iteration=iteration +1;
-	if(iteration<maxTries){
-		var mixers = $('.mixer-ing').get();
-		var liquors = $('.liquor-ing').get();
-
-		//update new positions
-		for (var i = 0; i<mixers.length; i++){
-			for (var j = 0; j < mIndexes.length; j ++) {				
-				if($(mixers[i]).data("matrixIndex") == mIndexes[j]){
-					$(mixers[i]).data("posIndex", j);
-					break;
+	var minDiff = 0.999;
+	var newEff;
+	iteration=iteration + 1;
+	if(iteration>maxTries){
+		ingredientOptimizeFlag = false;
+	}
+	
+	if(ingredientOptimizeFlag){
+		newEff = optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEff, (maxTries - iteration)/maxTries);
+		if(newEff < oldEff){
+			oldEff = newEff;
+			//update new positions
+			var mixers = $('.mixer-ing').get();
+			var liquors = $('.liquor-ing').get();
+			
+			for (var i = 0; i<mixers.length; i++){
+				for (var j = 0; j < mIndexes.length; j ++) {				
+					if($(mixers[i]).data("matrixIndex") == mIndexes[j]){
+						$(mixers[i]).data("posIndex", j);
+						break;
+					}
 				}
 			}
-		}
 
-		for (var i = 0; i<liquors.length; i++){
-			for (var j = 0; j < lIndexes.length; j ++) {				
-				if($(liquors[i]).data("matrixIndex") == lIndexes[j]){
-					$(liquors[i]).data("posIndex", j);
-					break;
+			for (var i = 0; i<liquors.length; i++){
+				for (var j = 0; j < lIndexes.length; j ++) {				
+					if($(liquors[i]).data("matrixIndex") == lIndexes[j]){
+						$(liquors[i]).data("posIndex", j);
+						break;
+					}
 				}
 			}
+			setIngredientPositions();
+		}else{
+			ingredientOptimizeFlag = false;
 		}
+	}
+	
+	var newForce;
+	if(ingredientOptimizeFlag || cocktailOptimizeFlag){
+		cocktailOptimizeFlag = true;
+		newForce = optimizeCtPositionsForce();
+		console.log("oldForce=", oldForce, "newForce=", newForce);
+		if (newForce < 10 || newForce == -1 || iteration > 5){
+			cocktailOptimizeFlag = false;
+		}
+	}
+	
+	drawDrinkCanvas();
 
-		setIngredientPositions();
-		//optimizeCocktailPositions();	
-		drawDrinkCanvas();
-		setTimeout(function(){optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEff, (maxTries - iteration)/maxTries)},10);			
+	//do i need this?
+	if(ingredientOptimizeFlag || cocktailOptimizeFlag){
+		setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce)}, 1000);
 	}else{
-		setTimeout(function(){finishSetElementPositions(lIndexes, mIndexes)}, 10);
+		mouseOverReady = true;
 	}
 	return;
 }	
 
-function finishSetElementPositions(lIndexes, mIndexes, oldEff, keepOptimizing){	
+function optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEffNum, distancePercent){
+	var randomI;
+	var tempValue;
+	var newEffNum;
+	
+	var distance = Math.round(lIndexes.length*distancePercent);
+	for(i = 0; i<lIndexes.length; i++){
+		//get a random swappable index
+		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+distance)), 
+								Math.max(Math.min(i+1,lIndexes.length-1), Math.min(lIndexes.length-1, i+lIndexes.length-distance)));
+		tempValue = lIndexes[randomI];
+		lIndexes[randomI] = lIndexes[i];
+		lIndexes[i] = tempValue;
+		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
+		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
+			oldEffNum = newEffNum;
+		}else{
+			tempValue = lIndexes[randomI];
+			lIndexes[randomI] = lIndexes[i];
+			lIndexes[i] = tempValue;
+		}
+	}	
 
-	var mixers = $('.mixer-ing').get();
-	var liquors = $('.liquor-ing').get();
-
-	//update new positions
-	for (var i = 0; i<mixers.length; i++){
-		for (var j = 0; j < mIndexes.length; j ++) {				
-			if($(mixers[i]).data("matrixIndex") == mIndexes[j]){
-				$(mixers[i]).data("posIndex", j);
-				break;
-			}
+	distance = Math.round(mIndexes.length*distancePercent);
+	for(i = 0; i<mIndexes.length; i++){
+		//get a random swappable index
+		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+distance)), 
+								Math.max(Math.min(i+1,mIndexes.length-1), Math.min(mIndexes.length-1, i+mIndexes.length-distance)));
+		tempValue = mIndexes[randomI];
+		mIndexes[randomI] = mIndexes[i];
+		mIndexes[i] = tempValue;
+		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
+		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
+			oldEffNum = newEffNum;
+		}else{
+			tempValue = mIndexes[randomI];
+			mIndexes[randomI] = mIndexes[i];
+			mIndexes[i] = tempValue;
 		}
 	}
-
-	for (var i = 0; i<liquors.length; i++){
-		for (var j = 0; j < lIndexes.length; j ++) {				
-			if($(liquors[i]).data("matrixIndex") == lIndexes[j]){
-				$(liquors[i]).data("posIndex", j);
-				break;
-			}
-		}
-	}
-	
-
-	mouseOverReady = true;
-	
-	//Calculate actual x,y positions for ingredients
-	setIngredientPositions();	
-//	if(keepOptimizing){
-//		setTimeout(function(){runOptimization(iteration, lIndexes, mIndexes, oldEff, val)},1)
-//	}
-	
-	//optimizeCtPositionsForce();	
-	drawDrinkCanvas();
-	
-	
+	return oldEffNum;
 }
 
 function drawDrinkCanvas(){
@@ -1054,64 +1017,21 @@ function calculateEfficiency2(lArray, mArray, w){
 	return effSum;
 }
 
-function optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEffNum, distancePercent){
-	var randomI;
-	var tempValue;
-	var newEffNum;
-	
-	var distance = Math.round(lIndexes.length*distancePercent);
-	for(i = 0; i<lIndexes.length; i++){
-		//get a random swappable index
-		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+distance)), 
-								Math.max(Math.min(i+1,lIndexes.length-1), Math.min(lIndexes.length-1, i+lIndexes.length-distance)));
-		tempValue = lIndexes[randomI];
-		lIndexes[randomI] = lIndexes[i];
-		lIndexes[i] = tempValue;
-		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
-		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
-			oldEffNum = newEffNum;
-		}else{
-			tempValue = lIndexes[randomI];
-			lIndexes[randomI] = lIndexes[i];
-			lIndexes[i] = tempValue;
-		}
-	}	
-
-	distance = Math.round(mIndexes.length*distancePercent);
-	for(i = 0; i<mIndexes.length; i++){
-		//get a random swappable index
-		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+distance)), 
-								Math.max(Math.min(i+1,mIndexes.length-1), Math.min(mIndexes.length-1, i+mIndexes.length-distance)));
-		tempValue = mIndexes[randomI];
-		mIndexes[randomI] = mIndexes[i];
-		mIndexes[i] = tempValue;
-		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
-		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
-			oldEffNum = newEffNum;
-		}else{
-			tempValue = mIndexes[randomI];
-			mIndexes[randomI] = mIndexes[i];
-			mIndexes[i] = tempValue;
-		}
-	}
-	setTimeout(function(){runOptimization(iteration, lIndexes, mIndexes, newEffNum, 1)}, 10);
-	return;
-}
-
-function optimizeCtPositionsForce(oldForces){
+function optimizeCtPositionsForce(){
 	if ($('.cocktail').length == 0)
 		return -1;
 	var minX, maxX, minY, maxY, c, i, j, x, y, offset, ctW, ctH;
 	var canvasOffset = $("#drink-canvas").offset();
-	minX = canvas.width/2-250 + canvasOffset.left;
-	maxX = canvas.width/2+250+ canvasOffset.left;
-	minY = canvasOffset.top;
-	maxY = canvasOffset.top + canvas.height;
-	
 	var cocktails = $('.cocktail').get();
 	
+	minX = canvas.width/2-250 + canvasOffset.left;
+	maxX = canvas.width/2+250 + canvasOffset.left;
+	minY = canvasOffset.top + $(cocktails[0]).height()/2;
+	maxY = canvasOffset.top + $(canvas).height() - $(cocktails[0]).height()/2;
+	
+	console.log(minX, maxX, minY, maxY);
+	
 	var forces = new Array(cocktails.length);
-	var oldForces = 100000000;
 	var f, sumF;
 	
 //	var cocktails = $(".cocktail").get();
@@ -1119,9 +1039,8 @@ function optimizeCtPositionsForce(oldForces){
 	
 	//calculate forces 
 	for(i=0; i<cocktails.length; i++){
-		console.log($(cocktails[i]).offset());
 		forces[i] = {Fx:0, Fy:0};
-		centerPos = [$(cocktails[i]).offset().left+$(cocktails[i]).width/2, $(cocktails[i]).offset().top + $(cocktails[i]).height()/2];
+		centerPos = [$(cocktails[i]).offset().left+$(cocktails[i]).width()/2, $(cocktails[i]).offset().top + $(cocktails[i]).height()/2];
 		forces[i].Fx = calcForce(centerPos, [minX, centerPos[1]]).Fx 
 			+ calcForce(centerPos, [maxX, centerPos[1]]).Fx; 
 		forces[i].Fy = calcForce(centerPos, [centerPos[0], minY]).Fy 
@@ -1129,7 +1048,7 @@ function optimizeCtPositionsForce(oldForces){
 				
 		for(j=0; j<cocktails.length; j++){
 			if(j!=i){
-				centerPos2 = [$(cocktails[j]).offset().left+$(cocktails[j]).width/2, $(cocktails[j]).offset().top + $(cocktails[j]).height()/2];
+				centerPos2 = [$(cocktails[j]).offset().left+$(cocktails[j]).width()/2, $(cocktails[j]).offset().top + $(cocktails[j]).height()/2];
 				f = calcForce(centerPos, centerPos2);
 				forces[i].Fx = forces[i].Fx + f.Fx;
 				forces[i].Fy = forces[i].Fy + f.Fy; 				
@@ -1138,15 +1057,14 @@ function optimizeCtPositionsForce(oldForces){
 	}
 	
 	sumF = 0;
+	var fraction = 10;
 	for(c=0; c<cocktails.length; c++){
 		sumF = sumF + Math.abs(forces[c].Fx) + Math.abs(forces[c].Fy);
-		$(cocktails[c]).offset({left:$(cocktails[c]).offset().left+forces[c].Fx, top:$(cocktails[c]).offset().top+forces[c].Fy});
-		$(cocktails[c]).offset({left:Math.min(Math.max($(cocktails[c]).offset().left, minX), maxX), 
-							top:Math.min(Math.max($(cocktails[c]).offset().left, minY), maxY)});
+		$(cocktails[c]).offset({left:$(cocktails[c]).offset().left+forces[c].Fx*fraction, top:$(cocktails[c]).offset().top+forces[c].Fy*fraction});
+		$(cocktails[c]).offset({left:Math.min(Math.max($(cocktails[c]).offset().left, minX), maxX), top:Math.min(Math.max($(cocktails[c]).offset().left, minY), maxY)});
 	}
 	
-	console.log("Initial F = " + sumF + ' < ' + oldForces);
-	return({oldForce:oldForces, newForces:sumF});
+	return sumF;
 }
 
 function sizeAndPositionMainElements(){
