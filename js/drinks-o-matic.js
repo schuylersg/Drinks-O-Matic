@@ -989,9 +989,11 @@ function setElementPositions(doOptimize){
 	
 	sizeAndPositionMainElements();
 	
-	var mixers = $('mixer-ing').get();
-	var liquors = $('liquor-ing').get();
-	
+	var mixers = $('.mixer-ing').get();
+	var liquors = $('.liquor-ing').get();
+		
+	//console.log(mixers);	
+		
 	var mIndexes = new Array(mixers.length);
 	var lIndexes = new Array(liquors.length);
 	
@@ -1003,32 +1005,91 @@ function setElementPositions(doOptimize){
 		lIndexes[$(liquors[i]).data("posIndex")] = $(liquors[i]).data("matrixIndex");
 	}
 	
-	var oldEff = calculateEfficiency2(lIndexes, mIndexes, [1, 1]);
-	var newEff = 0.5 * startEff;
+	var oldEff;
 	
-	var maxTries = 100;
-	var tries = 0;
-	var minDiff = 0.9;
+	var newEff = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
+	
 	if(optimize && doOptimize){
-		while(tries < maxTries && newEff < oldEff * minDiff){
-			var effOrder = optimizeIngredientOrder(lIndexes, mIndexes, oldEff;
-			//return {order:iOrder, effNum: newEffNum, depth:rDepth};
-		
-		
-		}
-		for(var i=0; i<ingredients.length; i++)
-			$(ingredients[i]).data("posIndex", effOrder.order[i]);
+		setTimeout(function(){runOptimization(0, lIndexes, mIndexes, oldEff, 1)},10);
 	}
+	finishSetElementPositions(lIndexes, mIndexes, oldEff, false);
+}
+
+function runOptimization(iteration, lIndexes, mIndexes, oldEff, val){
+	var maxTries = 20;
+	var minDiff = 0.9999;
+	iteration=iteration +1;
+	console.log(iteration);
+	if(iteration<maxTries){
+		var mixers = $('.mixer-ing').get();
+		var liquors = $('.liquor-ing').get();
+
+		//update new positions
+		for (var i = 0; i<mixers.length; i++){
+			for (var j = 0; j < mIndexes.length; j ++) {				
+				if($(mixers[i]).data("matrixIndex") == mIndexes[j]){
+					$(mixers[i]).data("posIndex", j);
+					break;
+				}
+			}
+		}
+
+		for (var i = 0; i<liquors.length; i++){
+			for (var j = 0; j < lIndexes.length; j ++) {				
+				if($(liquors[i]).data("matrixIndex") == lIndexes[j]){
+					$(liquors[i]).data("posIndex", j);
+					break;
+				}
+			}
+		}
+
+		setIngredientPositions();
+		//optimizeCocktailPositions();	
+		drawDrinkCanvas();
+		setTimeout(function(){optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEff, (maxTries - iteration)/maxTries)},100);			
+	}else{
+		setTimeout(function(){finishSetElementPositions(lIndexes, mIndexes)}, 10);
+	}
+	return;
+}	
+
+function finishSetElementPositions(lIndexes, mIndexes, oldEff, keepOptimizing){	
+
+	var mixers = $('.mixer-ing').get();
+	var liquors = $('.liquor-ing').get();
+
+	//update new positions
+	for (var i = 0; i<mixers.length; i++){
+		for (var j = 0; j < mIndexes.length; j ++) {				
+			if($(mixers[i]).data("matrixIndex") == mIndexes[j]){
+				$(mixers[i]).data("posIndex", j);
+				break;
+			}
+		}
+	}
+
+	for (var i = 0; i<liquors.length; i++){
+		for (var j = 0; j < lIndexes.length; j ++) {				
+			if($(liquors[i]).data("matrixIndex") == lIndexes[j]){
+				$(liquors[i]).data("posIndex", j);
+				break;
+			}
+		}
+	}
+	
 
 	mouseOverReady = true;
 	
 	//Calculate actual x,y positions for ingredients
 	setIngredientPositions();	
-	//	ingredientList.setListPositions('Liquor',[5,5], [5,cH-5]);
-	//	ingredientList.setListPositions('Mixer', [cW-5, cW-5], [5,cH-5]);
-	optimizeCocktailPositions();
+//	if(keepOptimizing){
+//		setTimeout(function(){runOptimization(iteration, lIndexes, mIndexes, oldEff, val)},1)
+//	}
 	
+	optimizeCocktailPositions();	
 	drawDrinkCanvas();
+	
+	
 }
 
 function drawDrinkCanvas(){
@@ -1284,112 +1345,6 @@ function writeCocktailsAndPaths(){
 						'h', curviness);
 			}
 	});
-
-/*	
-    for(c=0; c<cocktailList.length; c++){	//go through all cocktails
-		if(cocktailList[c].highlightState != "highlight"){	//draw curves for unhighlighted cocktails
-			if(cocktailList[c].highlightState == "normal"){
-				ctx.lineWidth = ctNormalLineWidth;
-				alpha = ctNormalLineAlpha;
-				tempFont = ingNormalFont;
-			} else {
-				ctx.lineWidth = ctNonHighlightLineWidth;
-				alpha = ctNonHighlightLineAlpha;
-				tempFont = ingNonHighlightFont;
-			}
-			
-			var str = "#" + cocktailList[c].name.replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-			var ctPos = $(str).offset();
-			var ctWidth = $(str).outerWidth(true);
-			var ctHeight = $(str).outerHeight(true);
-			
-			for(i=0; i<cocktailList[c].liquors.length; i++){
-				ctx.strokeStyle = addAtoColor(cocktailList[c].color, alpha);
-				var ingStr = "#" + cocktailList[c].liquors[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-				ingPos = $(ingStr).offset();
-				var ingWidth = $(ingStr).outerWidth();
-				var ingHeight = $(ingStr).outerHeight();
-				drawSCurve(ingPos.left + ingWidth + ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
-					ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
-					'h', curviness);
-			}  
-					
-			for(i=0; i<cocktailList[c].mixers.length; i++){
-				ctx.strokeStyle = addAtoColor(cocktailList[c].color, alpha);
-				ingPos = ingredientList.getBoundingBoxByName(cocktailList[c].mixers[i]);
-				drawSCurve(ctPos.left+ctWidth, ctPos.top+ctHeight/2,
-					ingPos[0] - ingTextMargin, (ingPos[1]+ingPos[3])/2,
-					'h', curviness);
-			}	 
-		}else{
-			selectedCocktails.push(c);
-		}
-	}
-	
-	
-	ctx.lineWidth = ctHighlightLineWidth;
-	alpha = ctHighlightLineAlpha;	
-	ctx.font = ingHighlightFont;
-	for(var cc = 0; cc<selectedCocktails.length; cc++){ //draw curves for highlighted cocktails
-		c = selectedCocktails[cc];
-		var str = "#" + cocktailList[c].name.replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-		var ctPos = $(str).position();
-		var ctWidth = $(str).outerWidth(true);
-		var ctHeight = $(str).outerHeight(true);
-			
-		for(i=0; i<cocktailList[c].liquors.length; i++){
-			if(ingredientList.highlightState[ingredientList.getIndexByName(cocktailList[c].liquors[i])] == "highlight"){
-				ctx.strokeStyle = addAtoColor(cocktailList[c].color, ctHighlightLineAlpha);
-				ctx.lineWidth = ctHighlightLineWidth;
-			} else {
-				ctx.strokeStyle = addAtoColor(cocktailList[c].color, ctNonHighlightLineAlpha);
-				ctx.lineWidth = ctNonHighlightLineWidth;
-			}
-			
-			ingPos = ingredientList.getBoundingBoxByName(cocktailList[c].liquors[i]);
-			drawSCurve(ingPos[2] + ingTextMargin, (ingPos[1]+ingPos[3])/2, 
-				ctPos.left, ctPos.top+ctHeight/2,
-				'h', curviness);
-		}
-			
-			
-		for(i=0; i<cocktailList[c].mixers.length; i++){
-			if(ingredientList.highlightState[ingredientList.getIndexByName(cocktailList[c].mixers[i])] =="highlight"){
-				ctx.strokeStyle = addAtoColor(cocktailList[c].color, ctHighlightLineAlpha);
-				ctx.lineWidth = ctHighlightLineWidth;
-			} else {
-				ctx.strokeStyle = addAtoColor(cocktailList[c].color, ctNonHighlightLineAlpha);
-				ctx.lineWidth = ctNonHighlightLineWidth;
-			}
-			ingPos = ingredientList.getBoundingBoxByName(cocktailList[c].mixers[i]);
-			drawSCurve(ctPos.left+ctWidth, ctPos.top+ctHeight/2,
-				ingPos[0] - ingTextMargin, (ingPos[1]+ingPos[3])/2,
-				'h', curviness);		
-		}
-	}
-	*/
-}
-
-/**
-* calculate the (arbitrary) efficiency number of this particular arrangement of ingredients
-*/
-function calcEfficiencyR(){
-	var ing = (".liquor-ing, .mixer-ing").get();
-	var ing = (".liquor-ing, .mixer-ing").get();
-	var pos, type, mIndex, w;
-	var effSum = 0;
-	
-	for (var i = 0; i< ing.length; i++){
-		pos = $(ing[i]).data("posIndex");
-		type = $(ing[i]).attr("class");
-		mIndex = $(ing[i]).data("matrixIndex");
-		for (var j = i+1; j < ing.length; i++){
-			(type == $(ing[j]).attr("class")) ? w=weights[0] : w=weights[1];
-			effSum = effSum + Math.pow(pos - $(ing[j]).data("posIndex"),2)*
-				Math.pow(interactionMatrix.grab(mIndex,$(ing[j]).data("matrixIndex")),2)*w;
-		}
-	}
-	return effSum;
 }
 
 /**
@@ -1401,116 +1356,62 @@ function calculateEfficiency2(lArray, mArray, w){
 	var effSum = 0;
 	for (var i = 0; i<lArray.length; i++){
 		for(var j = i; j <lArray.length; j++){
-			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(lIndex[i],lIndex[j]),2)*w[0];
+			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(lArray[i], lArray[j]),2)*w[0];
 		}
 		for(var j = 0; j <mArray.length; j++){
-			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(lIndex[i],mIndex[j]),2)*w[1];
+			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(lArray[i], mArray[j]),2)*w[1];
 		}
 	}
 	for (var i = 0; i < mArray.length; i++){
-		for(var j = i; j <mArray.length; j++){
-			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(mIndex[i],mIndex[j]),2)*w[0];
+		for(var j = i; j < mArray.length; j++){
+			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(mArray[i], mArray[j]),2)*w[0];
 		}
 	}
 	return effSum;
 }
 
-function optimizeIngredientOrder(lIndexes, mIndexes, oldEffNum, distance){
+function optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEffNum, distancePercent){
 	var randomI;
 	var tempValue;
+	var newEffNum;
+	
+	var distance = Math.round(lIndexes.length*distancePercent);
 	for(i = 0; i<lIndexes.length; i++){
 		//get a random swappable index
-		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+distance)), Math.max(Math.min(i+1,lIndexes.length), Math.min(lIndexes.length-1, i+lIndexes.length-distance)));
-		tempValue = lIndexes[rIndex];
-		lIndexes[rIndex] = lIndexes[i];
+		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+distance)), 
+								Math.max(Math.min(i+1,lIndexes.length-1), Math.min(lIndexes.length-1, i+lIndexes.length-distance)));
+		tempValue = lIndexes[randomI];
+		lIndexes[randomI] = lIndexes[i];
 		lIndexes[i] = tempValue;
 		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
 		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
 			oldEffNum = newEffNum;
 		}else{
-			tempValue = lIndexes[rIndex];
-			lIndexes[rIndex] = lIndexes[i];
+			tempValue = lIndexes[randomI];
+			lIndexes[randomI] = lIndexes[i];
 			lIndexes[i] = tempValue;
 		}
 	}	
 
+	distance = Math.round(mIndexes.length*distancePercent);
 	for(i = 0; i<mIndexes.length; i++){
 		//get a random swappable index
-		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+distance)), Math.max(Math.min(i+1,mIndexes.length), Math.min(mIndexes.length-1, i+mIndexes.length-distance)));
-		tempValue = mIndexes[rIndex];
-		mIndexes[rIndex] = mIndexes[i];
+		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+distance)), 
+								Math.max(Math.min(i+1,mIndexes.length-1), Math.min(mIndexes.length-1, i+mIndexes.length-distance)));
+		tempValue = mIndexes[randomI];
+		mIndexes[randomI] = mIndexes[i];
 		mIndexes[i] = tempValue;
 		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
 		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
 			oldEffNum = newEffNum;
 		}else{
-			tempValue = mIndexes[rIndex];
-			mIndexes[rIndex] = mIndexes[i];
+			tempValue = mIndexes[randomI];
+			mIndexes[randomI] = mIndexes[i];
 			mIndexes[i] = tempValue;
 		}
 	}
-	return newEffNum;
-}
-
-/**
-* Recursive function to optimize ingredient layout
-*/
-function optimizeIngredientOrderR(lIndexes, mIndexes, oldEffNum, rDepth){
-	
-	var initialEffNum = oldEffNum;
-	var newEffNum;
-	var tempO;
-	var rIndex;
-	var oOrder = iOrder.slice(0);
-	
-	//go through liquors trying random swaps
-	for(i = 0; i<lIndexes.length; i++){
-		rIndex = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+rDepth)), Math.max(Math.min(i+1,lIndexes.length), Math.min(lIndexes.length-1, i+lIndexes.length-rDepth)));
-		var tempValue = lIndexes[
-		
-		tempO = iOrder[lIndexes[rIndex]];
-		iOrder[lIndexes[rIndex]] = iOrder[lIndexes[i]];
-		iOrder[lIndexes[i]] = tempO;
-		newEffNum = calcEfficiencyR(iOrder, ingOptimizationWeights);
-		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
-			oldEffNum = newEffNum;
-		}else{
-			tempO = iOrder[lIndexes[rIndex]];
-			iOrder[lIndexes[rIndex]] = iOrder[lIndexes[i]];
-			iOrder[lIndexes[i]] = tempO;
-			newEffNum = oldEffNum;
-		}
-	}	
-	
-	//go through mixers
-	for(i = 0; i<mIndexes.length; i++){
-		rIndex = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+rDepth)), Math.max(Math.min(i+1,mIndexes.length), Math.min(lIndexes.length-1, i+mIndexes.length-rDepth)));
-		tempO = iOrder[mIndexes[rIndex]];
-		iOrder[mIndexes[rIndex]] = iOrder[mIndexes[i]];
-		iOrder[mIndexes[i]] = tempO;
-		newEffNum = calcEfficiencyR(iOrder, ingOptimizationWeights);
-		if(newEffNum < oldEffNum){
-			oldEffNum = newEffNum;
-		}else{
-			tempO = iOrder[mIndexes[rIndex]];
-			iOrder[mIndexes[rIndex]] = iOrder[mIndexes[i]];
-			iOrder[mIndexes[i]] = tempO;
-			newEffNum = oldEffNum;
-		}
-	}	
-	
-	var eff1, eff2;
-	if(rDepth <= maxRecursiveDepth && newEffNum < initialEffNum*(100-minPercentChange)/100) {
-		eff1 = optimizeIngredientOrderR(iOrder.slice(0), lIndexes, mIndexes, newEffNum, rDepth+1);
-		eff2 = optimizeIngredientOrderR(iOrder.slice(0), lIndexes, mIndexes, newEffNum, rDepth+1);
-		if(eff1.effNum < eff2.effNum){
-			return eff1;
-		} else {
-			return eff2;
-		}
-	}
-	
-	return {order:oOrder, effNum:initialEffNum, depth:rDepth};
+	setTimeout(function(){runOptimization(iteration, lIndexes, mIndexes, newEffNum, 1)}, 10);
+	return;
 }
 
 function optimizeCocktailPositions(){
@@ -1765,7 +1666,7 @@ function loadCocktails(){
 						var ctH = $(this).outerHeight();
 						ctD.position = [$(this).position().left+ctW/2, $(this).position().top+ctH/2]; 
 						$(this).data("ctData", ctD);
-						setTimeout(drawDrinkCanvas, 10);
+						setTimeout(drawDrinkCanvas(), 10);
 					}
 			});
 			
