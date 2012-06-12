@@ -55,7 +55,7 @@ var cocktailBeingDragged = null;
 var draggedCocktail = null;
 var ingredientSelected = null;
 var canvas;
-var ingOptimizationWeights = [1, 0.75];
+var ingOptimizationWeights = [1, 1];
 var cocktailSelected = null;
 var mouseOverReady = false;
 var optimize = true;
@@ -211,8 +211,8 @@ Cocktail.prototype.hasLiquor = function(liquorName){
 
 Cocktail.prototype.hasMixer = function(mixerName){
     var m;
-    for(m in this.mixers){
-        if (m == mixerName)
+    for(m = 0; m<this.mixers.length; m++){
+        if (this.mixers[m] == mixerName)
             return true;
     }
     return false;
@@ -613,8 +613,8 @@ function setElementPositions(doOptimize){
 }
 
 function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
-	console.log("Optimziation iteration=",iteration);
-	var maxTries = 20;
+	
+	var maxTries = 100;
 	var minDiff = 0.999;
 	var newEff;
 	iteration=iteration + 1;
@@ -624,7 +624,7 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
 	
 	if(ingredientOptimizeFlag){
 		newEff = optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEff, (maxTries - iteration)/maxTries);
-		if(newEff < oldEff){
+		if(newEff <= oldEff){
 			oldEff = newEff;
 			//update new positions
 			var mixers = $('.mixer-ing').get();
@@ -654,11 +654,10 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
 	}
 	
 	var newForce;
-	if(ingredientOptimizeFlag || cocktailOptimizeFlag){
-		cocktailOptimizeFlag = true;
+	if(cocktailOptimizeFlag){
 		newForce = optimizeCtPositionsForce();
-		console.log("oldForce=", oldForce, "newForce=", newForce);
-		if (newForce < 10 || newForce == -1 || iteration > 5){
+		//console.log("oldForce=", oldForce, "newForce=", newForce);
+		if ((Math.abs((oldForce-newForce)/oldForce) < 0.2) || iteration > 100){
 			cocktailOptimizeFlag = false;
 		}
 	}
@@ -667,7 +666,7 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
 
 	//do i need this?
 	if(ingredientOptimizeFlag || cocktailOptimizeFlag){
-		setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce)}, 1000);
+		setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce)}, 10);
 	}else{
 		mouseOverReady = true;
 	}
@@ -684,34 +683,38 @@ function optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEffNum, dista
 		//get a random swappable index
 		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+distance)), 
 								Math.max(Math.min(i+1,lIndexes.length-1), Math.min(lIndexes.length-1, i+lIndexes.length-distance)));
-		tempValue = lIndexes[randomI];
-		lIndexes[randomI] = lIndexes[i];
-		lIndexes[i] = tempValue;
-		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
-		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
-			oldEffNum = newEffNum;
-		}else{
+		if(interactionMatrix.grab(lIndexes[i], lIndexes[i])>0 && interactionMatrix.grab(lIndexes[randomI], lIndexes[randomI])>0){ 		
 			tempValue = lIndexes[randomI];
 			lIndexes[randomI] = lIndexes[i];
 			lIndexes[i] = tempValue;
-		}
-	}	
+			newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
+			if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
+				oldEffNum = newEffNum;
+			}else{
+				tempValue = lIndexes[randomI];
+				lIndexes[randomI] = lIndexes[i];
+				lIndexes[i] = tempValue;
+			}
+		}	
+	}
 
 	distance = Math.round(mIndexes.length*distancePercent);
 	for(i = 0; i<mIndexes.length; i++){
 		//get a random swappable index
 		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+distance)), 
 								Math.max(Math.min(i+1,mIndexes.length-1), Math.min(mIndexes.length-1, i+mIndexes.length-distance)));
-		tempValue = mIndexes[randomI];
-		mIndexes[randomI] = mIndexes[i];
-		mIndexes[i] = tempValue;
-		newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
-		if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
-			oldEffNum = newEffNum;
-		}else{
+		if(interactionMatrix.grab(mIndexes[i], mIndexes[i])>0 && interactionMatrix.grab(mIndexes[randomI], mIndexes[randomI])>0){
 			tempValue = mIndexes[randomI];
 			mIndexes[randomI] = mIndexes[i];
 			mIndexes[i] = tempValue;
+			newEffNum = calculateEfficiency2(lIndexes, mIndexes, ingOptimizationWeights);
+			if((newEffNum < oldEffNum) || (newEffNum == oldEffNum && Math.random()>0.5)){
+				oldEffNum = newEffNum;
+			}else{
+				tempValue = mIndexes[randomI];
+				mIndexes[randomI] = mIndexes[i];
+				mIndexes[i] = tempValue;
+			}
 		}
 	}
 	return oldEffNum;
@@ -873,11 +876,12 @@ function writeCocktailsAndPaths(){
 		var alpha = ctNonHighlightLineAlpha;
 		var ctPos = $(this).offset();
 		var ctWidth = $(this).innerWidth();
-		var ctHeight = $(this).outerHeight(true);
+		var ctHeight = $(this).outerHeight(false);
 		
 		//draw lines to each liquor
 		for(var i=0; i<ctInfo.liquors.length; i++){
-			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
+			ctx.strokeStyle = addAtoColor($(this).css("background-color"), alpha);
+			console.log($(this).css("background-color"));
 			var ingStr = "#" + ctInfo.liquors[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
@@ -889,7 +893,7 @@ function writeCocktailsAndPaths(){
 		
 		//draw lines to each mixer
 		for(var i=0; i<ctInfo.mixers.length; i++){
-			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
+			ctx.strokeStyle = addAtoColor($(this).css("background-color"), alpha);
 			var ingStr = "#" + ctInfo.mixers[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
@@ -909,7 +913,7 @@ function writeCocktailsAndPaths(){
 		var alpha = ctNormalLineAlpha;
 		var ctPos = $(this).offset();
 		var ctWidth = $(this).innerWidth();
-		var ctHeight = $(this).outerHeight(true);
+		var ctHeight = $(this).outerHeight(false);
 		
 		//draw lines to each liquor
 		for(var i=0; i<ctInfo.liquors.length; i++){
@@ -945,7 +949,7 @@ function writeCocktailsAndPaths(){
 		var alpha = ctHighlightLineAlpha;
 		var ctPos = $(this).offset();
 		var ctWidth = $(this).innerWidth();
-		var ctHeight = $(this).outerHeight(true);
+		var ctHeight = $(this).outerHeight(false);
 		
 		for(var i=0; i<ctInfo.liquors.length; i++){
 			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
@@ -1029,39 +1033,58 @@ function optimizeCtPositionsForce(){
 	minY = canvasOffset.top + $(cocktails[0]).height()/2;
 	maxY = canvasOffset.top + $(canvas).height() - $(cocktails[0]).height()/2;
 	
-	console.log(minX, maxX, minY, maxY);
-	
 	var forces = new Array(cocktails.length);
 	var f, sumF;
 	
 //	var cocktails = $(".cocktail").get();
 	var centerPos, centerPos2;
+	var cocktail;
+	
+	var ingFactor = 1000;
+	var cocktailFactor = 10;
 	
 	//calculate forces 
 	for(i=0; i<cocktails.length; i++){
 		forces[i] = {Fx:0, Fy:0};
 		centerPos = [$(cocktails[i]).offset().left+$(cocktails[i]).width()/2, $(cocktails[i]).offset().top + $(cocktails[i]).height()/2];
-		forces[i].Fx = calcForce(centerPos, [minX, centerPos[1]]).Fx 
-			+ calcForce(centerPos, [maxX, centerPos[1]]).Fx; 
-		forces[i].Fy = calcForce(centerPos, [centerPos[0], minY]).Fy 
-			+ calcForce(centerPos, [centerPos[0], maxY]).Fy;
-				
+		//forces[i].Fx = calcForce(centerPos, [minX, centerPos[1]]).Fx + calcForce(centerPos, [maxX, centerPos[1]]).Fx; 
+		//forces[i].Fy = calcForce(centerPos, [centerPos[0], minY]).Fy + calcForce(centerPos, [centerPos[0], maxY]).Fy;
+		cocktail = cocktailDB[$(cocktails[i]).data("dbIndex")];
+		
+		for(var l = 0; l<cocktail.liquors.length; l++){
+			var ingStr = "#" + cocktail.liquors[l].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
+			centerPos2 = [$(ingStr).offset().left, $(ingStr).offset().top + $(ingStr).height()/2];
+			f = calcForce(centerPos, centerPos2);
+			forces[i].Fx = forces[i].Fx - f.Fx*ingFactor;
+			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor;
+		}
+		
+		for(var l = 0; l<cocktail.mixers.length; l++){
+			var ingStr = "#" + cocktail.mixers[l].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
+			centerPos2 = [$(ingStr).offset().left, $(ingStr).offset().top + $(ingStr).height()/2];
+			f = calcForce(centerPos, centerPos2);
+			forces[i].Fx = forces[i].Fx - f.Fx*ingFactor;
+			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor;
+		}
+	
+		
 		for(j=0; j<cocktails.length; j++){
 			if(j!=i){
 				centerPos2 = [$(cocktails[j]).offset().left+$(cocktails[j]).width()/2, $(cocktails[j]).offset().top + $(cocktails[j]).height()/2];
 				f = calcForce(centerPos, centerPos2);
-				forces[i].Fx = forces[i].Fx + f.Fx;
-				forces[i].Fy = forces[i].Fy + f.Fy; 				
+				forces[i].Fx = forces[i].Fx + f.Fx*cocktailFactor;
+				forces[i].Fy = forces[i].Fy + f.Fy*cocktailFactor;
+				
 			}
 		}
 	}
 	
 	sumF = 0;
-	var fraction = 10;
+	var fraction = 1;
 	for(c=0; c<cocktails.length; c++){
 		sumF = sumF + Math.abs(forces[c].Fx) + Math.abs(forces[c].Fy);
 		$(cocktails[c]).offset({left:$(cocktails[c]).offset().left+forces[c].Fx*fraction, top:$(cocktails[c]).offset().top+forces[c].Fy*fraction});
-		$(cocktails[c]).offset({left:Math.min(Math.max($(cocktails[c]).offset().left, minX), maxX), top:Math.min(Math.max($(cocktails[c]).offset().left, minY), maxY)});
+		$(cocktails[c]).offset({left:constrain(minX, maxX, $(cocktails[c]).offset().left), top:constrain(minY, maxY, $(cocktails[c]).offset().top)});
 	}
 	
 	return sumF;
@@ -1122,9 +1145,27 @@ function addCocktailToMatrix(c){
 }
 
 function ctMouseEnter(elem){
+	cocktailOptimizeFlag = false;
 	var center = {left:$(elem).offset().left+$(elem).width()/2, top:$(elem).offset().top+$(elem).height()/2};
 	$(elem).removeClass("cocktail-normal").addClass("cocktail-highlight");
 	$(".cocktail-normal").removeClass("cocktail-normal").addClass("cocktail-nonhighlight");
+	var ct = cocktailDB[$(elem).data("dbIndex")];
+	var liquors = $('.liquor-ing').get();
+	for(var l = 0; l<liquors.length; l++){
+		if(ct.hasLiquor($(liquors[l]).text()))
+			$(liquors[l]).addClass('liquor-ing-highlight');
+		else
+			$(liquors[l]).addClass('liquor-ing-nonhighlight');
+	}
+	
+	var mixers = $('.mixer-ing').get();
+	for(var l = 0; l<mixers.length; l++){
+		if(ct.hasMixer($(mixers[l]).text()))
+			$(mixers[l]).addClass('mixer-ing-highlight');
+		else
+			$(mixers[l]).addClass('mixer-ing-nonhighlight');
+	}
+	
 	runOnEnterExit(elem, center);
 }
 
@@ -1132,7 +1173,12 @@ function ctMouseExit(elem){
 	var center = {left:$(elem).offset().left+$(elem).width()/2, top:$(elem).offset().top+$(elem).height()/2};
 	$(elem).removeClass("cocktail-highlight").addClass("cocktail-normal");
 	$(".cocktail-nonhighlight").removeClass("cocktail-nonhighlight").addClass("cocktail-normal");
+	$('.liquor-ing-highlight').removeClass('liquor-ing-highlight');
+	$('.liquor-ing-nonhighlight').removeClass('liquor-ing-nonhighlight');
+	$('.mixer-ing-highlight').removeClass('mixer-ing-highlight');
+	$('.mixer-ing-nonhighlight').removeClass('mixer-ing-nonhighlight');
 	runOnEnterExit(elem, center)	
+	cocktailOptimizeFlag = true;
 }
 
 /**
@@ -1209,7 +1255,15 @@ function returnRGB(val, outOf, trans){
 * Add an alpha channel to an RGB color
 */
 function addAtoColor(c, a){
-	return 'rgba(' + Math.round(c.r*a) +','+ Math.round(c.g*a) +','+ Math.round(c.b*a) +','+'1)';
+	var r = c.slice(4, c.indexOf(','));
+	c = c.slice(c.indexOf(' ')+1);
+	var g = c.slice(0, c.indexOf(','));
+	c = c.slice(c.indexOf(' ')+1);
+	var b = c.slice(0, c.indexOf(')'));
+
+	console.log("r="+r, "g="+g,"b="+ b);
+	console.log('rgba(' + Math.round(r*a) +','+ Math.round(g*a) +','+ Math.round(b*a) +','+'1)');
+	return 'rgba(' + Math.round(r*a) +','+ Math.round(g*a) +','+ Math.round(b*a) +','+'1)';
 }
 
 
@@ -1219,16 +1273,14 @@ function addAtoColor(c, a){
 * curve factor is between 0(line) and 1(quadratic curve)
 */
 function drawSCurve(sx, sy, fx, fy, dir, curveFactor){
-    var mx = (fx+sx)/2;
+	var mx = (fx+sx)/2;
     var my = (fy+sy)/2;
     var cx1, cy1, cx2, cy2, cx3, cy3, cx4, cy4;
     
     var dX = fx - sx;
     var dY = fy - sy;
     
-    curveFactor = 0.3;
-    
-    var entryFactor = 0.4; 
+    var entryFactor = 0.3; 
     var lengthFactor = 0;
     
     var controlLength = Math.min(Math.abs(dX), Math.abs(dY))/2*lengthFactor;
@@ -1241,6 +1293,8 @@ function drawSCurve(sx, sy, fx, fy, dir, curveFactor){
         ddX = dX - 4*dX*entryFactor;
         controlLength = Math.min(Math.abs(dX), Math.abs(dY))/2*lengthFactor;
         
+		curveFactor = 0;
+		
         var minAngle = Math.atan(dY/dX);
         var cAngle = curveFactor*(Math.PI/2 - minAngle) + minAngle;
         
@@ -1343,9 +1397,18 @@ function calcForce(i,j){
 	if(isNaN(Fy))
 		console.log("i: " + i + " j: " + j + " dX: " + dX + " dY: " + dY +  " Theta: " + theta + " Fx: " + Fx + " Fy: " + Fy);	
 	
-	return {Fx:Fx, Fy:Fy};
+	return {Fx:Fx*getRandomInt(80,120)/100, Fy:Fy*getRandomInt(80,120)/100};
 }
 
 var isEven = function(someNumber){
     return (someNumber%2 == 0) ? true : false;
 };
+
+function constrain(min, max, value){
+	if(value<min)
+		return min;
+	else if (value>max)
+		return max;
+	else
+		return value;
+}
