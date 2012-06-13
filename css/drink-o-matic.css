@@ -5,6 +5,7 @@
 
 	div{
 		font-family:SWRomnd;
+		white-space: nowrap;
 	}
 	
 	.ing-menu {
@@ -70,6 +71,7 @@
 		text-align:left;
 		position:absolute;
 		color:white;
+		z-index:20;
 		
 	}
 	
@@ -86,6 +88,7 @@
 		position:absolute;
 		text-align:left;
 		color:white;
+		z-index:20;
 	}
 
 	.mixer-ing-highlight{
@@ -97,11 +100,20 @@
 		font-size:75%;
 	}
 	
-	.ing-item-hover{
-		cursor:pointer;
-	
+	.ingredient{
+		position:absolute;
+		font-size:100%;
+	}
+
+	.ingredient-nonhighlight{
+		font-size:100%;
+		color:RGB(25, 25, 25);
 	}
 	
+	.ingredient-highlight{
+		font-size:125%;
+	}
+
 	.cocktail-container{
 		position:absolute;
 		font-family:SWRomnd;

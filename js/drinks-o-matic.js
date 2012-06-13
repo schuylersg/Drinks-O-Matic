@@ -218,6 +218,10 @@ Cocktail.prototype.hasMixer = function(mixerName){
     return false;
 };
 
+Cocktail.prototype.hasIngredient = function(iName){
+	return (this.hasLiquor(iName) || this.hasMixer(iName) );
+}
+
 /*********************************************************
 /Application functions
 /********************************************************/
@@ -262,6 +266,14 @@ $(document).ready(function() {
 		$(this).removeClass('menu-item-hover');
 	  }
 	);
+	
+	/*
+	$(".ingredient").on("click", function (event) {
+		$(this).toggleClass("ingredient-hover");
+	  }
+	);
+	
+	*/
 	
 	//click adds item to canvas
 	$(".menu-item").click(function(){
@@ -319,7 +331,12 @@ function ingredientDropped(event, item){
 	//Check if this is a newly dropped item from the menu
 	if($(item).hasClass("menu-item")){		
 		//remove style information
+		$(item).off();
+		var itemID = "#" + $(item).text().replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
+		$(item).removeClass('menu-item ui-corner-all');		
 		$(item).attr("style", "");
+		$(item).addClass('ingredient');
+
 		if($(item).hasClass("liquor")){
 			iType = 'Liquor';
 			$(item).attr("class", "liquor-ing liquor");
@@ -329,14 +346,13 @@ function ingredientDropped(event, item){
 		}
 
 		$(item).insertBefore("#drink-canvas");
-		$(item).hover(function () {
-			$(this).addClass("ing-item-hover");
-		  }, 
-		  function () {
-			$(this).removeClass('ing-item-hover');
-			}
-		);
-		
+
+		$(item).draggable('destroy');
+		$(itemID).mouseenter(function(){ ingredientHighlighted($(this));			
+			});
+		$(itemID).mouseleave(function(){ ingredientUnighlighted($(this))});	
+			
+			
 		interactionMatrix.addColumn();
 		interactionMatrix.addRow();
 		$(item).data("matrixIndex", interactionMatrix.numColumns()-1);
@@ -351,13 +367,38 @@ function ingredientDropped(event, item){
 		if(cocktailsAdded.length > 0){
 			moveNewIngredientToOptimum(item);
 			positionNewCocktails(cocktailsAdded);
-			ingredientOptimizeFlag = true;
 			//cocktailOptimizeFlag = true;
 		}		
-		$(item).unbind('mouseenter mouseleave click');
+		ingredientOptimizeFlag = true;
+		//$(item).unbind('mouseenter mouseleave click');
 	}	
-	setTimeout(setElementPositions, 10);	//use setTimeout because we never want to return here
+	setTimeout(setElementPositions(true), 1);	//use setTimeout because we never want to return here
 											//program should just autonomously run until optimums are found
+	//setElementPositions(true);
+}
+
+function ingredientHighlighted(item){
+	$('.ingredient').removeClass('ingredient').addClass('ingredient-nonhighlight');
+	$(item).removeClass('ingredient-nonhighlight').addClass('ingredient-highlight');
+	var cocktails = $('.cocktail').get();
+	for (var c = 0; c < cocktails.length; c++){
+		if(cocktailDB[$(cocktails[c]).data("dbIndex")].hasIngredient($(item).text())){
+			$(cocktails[c]).removeClass("cocktail-normal").addClass("cocktail-highlight");
+		}else{
+			$(cocktails[c]).removeClass("cocktail-normal").addClass("cocktail-nonhighlight");
+		}
+	}
+	setIngredientPositions();
+	drawDrinkCanvas();
+}
+
+function ingredientUnighlighted(item){
+	console.log("leaving");
+	$(item).removeClass('ingredient-highlight').addClass('ingredient')
+	$('.ingredient-nonhighlight').removeClass('ingredient-nonhighlight').addClass('ingredient');
+	$('.cocktail').removeClass('cocktail-highlight cocktail-nonhighlight').addClass('cocktail-normal');
+	setIngredientPositions();
+	drawDrinkCanvas();
 }
 
 function loadCocktails(){
@@ -408,6 +449,7 @@ function loadCocktails(){
 			var ctStr = "#" + cocktailDB[c].name.replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 				
 			$(ctStr).data("dbIndex", c);
+			$(ctStr).data("verticalPos", $('.cocktail').length);
 						
 			$(ctStr).mouseenter(function(){ctMouseEnter(this)});
 			$(ctStr).mouseleave(function(){ctMouseExit(this)});					
@@ -423,7 +465,7 @@ function loadCocktails(){
 						drawDrinkCanvas();
 					},
 					stop: function() {
-						setTimeout(drawDrinkCanvas, 10);
+						setTimeout(drawDrinkCanvas, 1);
 					}
 			});	
 		}
@@ -507,6 +549,7 @@ function moveNewIngredientToOptimum(item){
 function positionNewCocktails(cocktailsAdded){
 	var left, top;
 	var offset;
+	//console.log("Positioning");
 	for(var c = 0; c<cocktailsAdded.length; c++){
 		left = 0;
 		top = 0;
@@ -515,15 +558,16 @@ function positionNewCocktails(cocktailsAdded){
 			left = left + offset.left;
 			top = top + offset.top;
 		}
-		
-		
+			
 		for(m =0; m<cocktailsAdded[c].mixers.length; m++){ 
 			offset = $("#" + cocktailsAdded[c].mixers[m].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_")).offset();
 			left = left + offset.left;
 			top = top + offset.top;
 		}
 		var ctStr = "#" + cocktailsAdded[c].name.replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-		$(ctStr).offset({left:left/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length), top:top/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length)});
+		//$(ctStr).offset({left:left/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length), top:top/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length)});
+		$(ctStr).offset({left:$('#drink-canvas').width()/2, top:top/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length)});
+		//console.log($(ctStr).text(), $(ctStr).offset().top);
 	}
 }
 
@@ -609,6 +653,7 @@ function setElementPositions(doOptimize){
 	if(optimize){
 		//probably should disable the ability to add any more ingredients
 		setTimeout(function(){startOptimization(0, lIndexes, mIndexes, Infinity, Infinity, 0)},1);	//never return here
+		//startOptimization(0, lIndexes, mIndexes, Infinity, Infinity, 0);	//never return here
 	}
 }
 
@@ -621,13 +666,16 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce, curr
 	iteration=iteration + 1;
 	if(iteration>maxTries || currentTriesAtScore > 10){
 		ingredientOptimizeFlag = false;
-		cocktailOptimizeFlag = true;
+		cocktailOptimizeFlag = false;
 		var cocktails = $('.cocktail').get();
 		var ctAdded = new Array();
 		for (var c = 0; c < cocktails.length; c++){
 			ctAdded[c] = cocktailDB[$(cocktails[c]).data("dbIndex")];
 		}
+		setIngredientPositions();
 		positionNewCocktails(ctAdded);
+		scaleElementsVertically();
+		drawDrinkCanvas();
 	}
 	
 	if(ingredientOptimizeFlag){
@@ -659,27 +707,16 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce, curr
 					}
 				}
 			}
-			setIngredientPositions();
+			//setIngredientPositions();
 		}else{
 			//ingredientOptimizeFlag = false;
 		}
 	}
 	
-	var newForce;
-	if(cocktailOptimizeFlag){
-		newForce = optimizeCtPositionsForce();
-		//console.log("oldForce=", oldForce, "newForce=", newForce);
-		if ((Math.abs((oldForce-newForce)/oldForce) < 0.2) || iteration > 100){
-			cocktailOptimizeFlag = false;
-		}
-	}
-	
-	drawDrinkCanvas();
-
 	//do i need this?
 	if(ingredientOptimizeFlag || cocktailOptimizeFlag){
-		//setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce, currentTriesAtScore)}, 10);
-		startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce, currentTriesAtScore);
+		setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, 0, currentTriesAtScore)}, 1);
+		//startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce, currentTriesAtScore);
 	}else{
 		mouseOverReady = true;
 	}
@@ -745,7 +782,7 @@ function drawDrinkCanvas(){
 		var color ={r:250, g:250, b:250};
 		ctx.fillStyle = "white";
 		ctx.textAlign = "center";
-		ctx.font="20px Arial";
+		ctx.font="20px SWRomnd";
 		ctx.fillText("Keep adding ingredients!", cW/2, cH/2);
 	}
 	writeCocktailsAndPaths();	
@@ -894,7 +931,6 @@ function writeCocktailsAndPaths(){
 		//draw lines to each liquor
 		for(var i=0; i<ctInfo.liquors.length; i++){
 			ctx.strokeStyle = addAtoColor($(this).css("background-color"), alpha);
-			console.log($(this).css("background-color"));
 			var ingStr = "#" + ctInfo.liquors[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
@@ -965,8 +1001,15 @@ function writeCocktailsAndPaths(){
 		var ctHeight = $(this).outerHeight(false);
 		
 		for(var i=0; i<ctInfo.liquors.length; i++){
-			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
 			var ingStr = "#" + ctInfo.liquors[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
+			if($(ingStr).hasClass('ingredient-nonhighlight')){
+				ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNonHighlightLineAlpha);
+				ctx.lineWidth = ctNonHighlightLineWidth;
+			}else{
+				ctx.strokeStyle = $(this).css("background-color")
+				ctx.lineWidth = ctHighlightLineWidth;
+			}
+			
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
 			var ingHeight = $(ingStr).outerHeight();
@@ -976,8 +1019,14 @@ function writeCocktailsAndPaths(){
 		}
 		
 		for(var i=0; i<ctInfo.mixers.length; i++){
-			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
 			var ingStr = "#" + ctInfo.mixers[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
+			if($(ingStr).hasClass('ingredient-nonhighlight')){
+				ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNonHighlightLineAlpha);
+				ctx.lineWidth = ctNonHighlightLineWidth;
+			}else{
+				ctx.strokeStyle = $(this).css("background-color")
+				ctx.lineWidth = ctHighlightLineWidth;
+			}
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
 			var ingHeight = $(ingStr).outerHeight();
@@ -986,6 +1035,36 @@ function writeCocktailsAndPaths(){
 						'h', curviness);
 			}
 	});
+}
+
+function scaleElementsVertically(){
+	var cocktails = $('.cocktail').get();
+	var height = $('#drink-canvas').height();
+	var canvasTop = $('#drink-canvas').offset().top;
+	var canvasCenter = $('#drink-canvas').offset().left + $('#drink-canvas').width()/2;
+	var sorting = true;
+	var temp;
+	var smallest;
+	var index;
+	var last = 0;
+
+	for(var c = 0; c < cocktails.length; c++){
+		smallest = Infinity;
+		for(var d = 0; d < cocktails.length; d++){
+			if(($(cocktails[d]).offset().top < smallest) && ($(cocktails[d]).offset().top > last )){
+				smallest = $(cocktails[d]).offset().top;
+				index = d;
+			}
+		}
+		$(cocktails[index]).data("verticalPos", c);
+		last = smallest;
+	}
+		
+		
+	for(var c = 0; c < cocktails.length; c++){
+		
+		$(cocktails[c]).offset({left:canvasCenter - $(cocktails[c]).width()/2, top:canvasTop + height/(cocktails.length+1)*($(cocktails[c]).data("verticalPos")+1)});
+	}
 }
 
 /**calculate the actual x,y positions of all ingredients on the canvas
@@ -999,15 +1078,26 @@ function setIngredientPositions(){
 		var canOffset = $('#drink-canvas').offset();
 		var numLiq = $('.liquor-ing').length;
 		var posIndex = $(this).data("posIndex");
-		$(this).offset({left:$(this).offset.left, top:canHeight/(numLiq+1)*(posIndex+1)+canOffset.top});
+		var h = $(this).height();
+		$(this).offset({left:$(this).offset().left, top:canHeight/(numLiq+1)*(posIndex+1)-h/2+canOffset.top});
 	});
 	
 	$('.mixer-ing').each(function(index) {
 		var canHeight = $('#drink-canvas').height();
+		var canWidth = $('#drink-canvas').width();
 		var canOffset = $('#drink-canvas').offset();
 		var numMix = $('.mixer-ing').length;
 		var posIndex = $(this).data("posIndex");
-		$(this).offset({left:$(this).offset.left, top:canHeight/(numMix+1)*(posIndex+1)+canOffset.top});
+		var h = $(this).height();
+		var w = $(this).outerWidth(true);
+		var left;
+		console.log($(this).offset().left, canWidth - w + canOffset.left);
+		if($(this).offset().left == canWidth - w + canOffset.left)
+			left = $(this).offset().left; 
+		else
+			left = $(this).offset().left - w + canOffset.left;
+			
+		$(this).offset({left:canOffset.left + canWidth - w, top:canHeight/(numMix+1)*(posIndex+1)-h/2+canOffset.top});
 	});
 }
 
@@ -1020,87 +1110,18 @@ function calculateEfficiency2(lArray, mArray, w){
 	var effSum = 0;
 	for (var i = 0; i<lArray.length; i++){
 		for(var j = i; j <lArray.length; j++){
-			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(lArray[i], lArray[j]),2)*w[0];
+			effSum = effSum +  Math.pow((i/lArray.length - j/lArray.length)*10,2)*Math.pow(interactionMatrix.grab(lArray[i], lArray[j]),2)*w[0];
 		}
 		for(var j = 0; j <mArray.length; j++){
-			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(lArray[i], mArray[j]),2)*w[1];
+			effSum = effSum +  Math.pow((i/lArray.length - j/mArray.length)*10,2)*Math.pow(interactionMatrix.grab(lArray[i], mArray[j]),2)*w[1];
 		}
 	}
 	for (var i = 0; i < mArray.length; i++){
 		for(var j = i; j < mArray.length; j++){
-			effSum = effSum +  Math.pow(i - j,2)*Math.pow(interactionMatrix.grab(mArray[i], mArray[j]),2)*w[0];
+			effSum = effSum +  Math.pow((i/mArray.length - j/mArray.length)*10,2)*Math.pow(interactionMatrix.grab(mArray[i], mArray[j]),2)*w[0];
 		}
 	}
 	return effSum;
-}
-
-function optimizeCtPositionsForce(){
-	if ($('.cocktail').length == 0)
-		return -1;
-	var minX, maxX, minY, maxY, c, i, j, x, y, offset, ctW, ctH;
-	var canvasOffset = $("#drink-canvas").offset();
-	var cocktails = $('.cocktail').get();
-	
-	minX = canvas.width/2-250 + canvasOffset.left;
-	maxX = canvas.width/2+250 + canvasOffset.left;
-	minY = canvasOffset.top + $(cocktails[0]).height()/2;
-	maxY = canvasOffset.top + $(canvas).height() - $(cocktails[0]).height()/2;
-	
-	var forces = new Array(cocktails.length);
-	var f, sumF;
-	
-//	var cocktails = $(".cocktail").get();
-	var centerPos, centerPos2;
-	var cocktail;
-	
-	var ingFactor = 0;
-	var cocktailFactor = 100;
-	
-	//calculate forces 
-	for(i=0; i<cocktails.length; i++){
-		forces[i] = {Fx:0, Fy:0};
-		centerPos = [$(cocktails[i]).offset().left+$(cocktails[i]).width()/2, $(cocktails[i]).offset().top + $(cocktails[i]).height()/2];
-		//forces[i].Fx = calcForce(centerPos, [minX, centerPos[1]]).Fx + calcForce(centerPos, [maxX, centerPos[1]]).Fx; 
-		//forces[i].Fy = calcForce(centerPos, [centerPos[0], minY]).Fy + calcForce(centerPos, [centerPos[0], maxY]).Fy;
-		cocktail = cocktailDB[$(cocktails[i]).data("dbIndex")];
-		
-		for(var l = 0; l<cocktail.liquors.length; l++){
-			var ingStr = "#" + cocktail.liquors[l].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-			centerPos2 = [$(ingStr).offset().left, $(ingStr).offset().top + $(ingStr).height()/2];
-			f = calcForce(centerPos, centerPos2);
-			forces[i].Fx = forces[i].Fx - f.Fx*ingFactor;
-			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor * 0;
-		}
-		
-		for(var l = 0; l<cocktail.mixers.length; l++){
-			var ingStr = "#" + cocktail.mixers[l].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
-			centerPos2 = [$(ingStr).offset().left, $(ingStr).offset().top + $(ingStr).height()/2];
-			f = calcForce(centerPos, centerPos2);
-			forces[i].Fx = forces[i].Fx - f.Fx*ingFactor;
-			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor * 0;
-		}
-	
-		
-		for(j=0; j<cocktails.length; j++){
-			if(j!=i){
-				centerPos2 = [$(cocktails[j]).offset().left+$(cocktails[j]).width()/2, $(cocktails[j]).offset().top + $(cocktails[j]).height()/2];
-				f = calcForce(centerPos, centerPos2);
-				forces[i].Fx = forces[i].Fx + f.Fx*cocktailFactor;
-				forces[i].Fy = forces[i].Fy + f.Fy*cocktailFactor * 0 ;
-				
-			}
-		}
-	}
-	
-	sumF = 0;
-	var fraction = 1;
-	for(c=0; c<cocktails.length; c++){
-		sumF = sumF + Math.abs(forces[c].Fx) + Math.abs(forces[c].Fy);
-		$(cocktails[c]).offset({left:$(cocktails[c]).offset().left+forces[c].Fx*fraction, top:$(cocktails[c]).offset().top+forces[c].Fy*fraction});
-		$(cocktails[c]).offset({left:constrain(minX, maxX, $(cocktails[c]).offset().left), top:constrain(minY, maxY, $(cocktails[c]).offset().top)});
-	}
-	
-	return sumF;
 }
 
 function sizeAndPositionMainElements(){
@@ -1166,17 +1187,17 @@ function ctMouseEnter(elem){
 	var liquors = $('.liquor-ing').get();
 	for(var l = 0; l<liquors.length; l++){
 		if(ct.hasLiquor($(liquors[l]).text()))
-			$(liquors[l]).addClass('liquor-ing-highlight');
+			$(liquors[l]).addClass('ingredient-highlight');
 		else
-			$(liquors[l]).addClass('liquor-ing-nonhighlight');
+			$(liquors[l]).addClass('ingredient-nonhighlight');
 	}
 	
 	var mixers = $('.mixer-ing').get();
 	for(var l = 0; l<mixers.length; l++){
 		if(ct.hasMixer($(mixers[l]).text()))
-			$(mixers[l]).addClass('mixer-ing-highlight');
+			$(mixers[l]).addClass('ingredient-highlight');
 		else
-			$(mixers[l]).addClass('mixer-ing-nonhighlight');
+			$(mixers[l]).addClass('ingredient-nonhighlight');
 	}
 	
 	runOnEnterExit(elem, center);
@@ -1186,12 +1207,9 @@ function ctMouseExit(elem){
 	var center = {left:$(elem).offset().left+$(elem).width()/2, top:$(elem).offset().top+$(elem).height()/2};
 	$(elem).removeClass("cocktail-highlight").addClass("cocktail-normal");
 	$(".cocktail-nonhighlight").removeClass("cocktail-nonhighlight").addClass("cocktail-normal");
-	$('.liquor-ing-highlight').removeClass('liquor-ing-highlight');
-	$('.liquor-ing-nonhighlight').removeClass('liquor-ing-nonhighlight');
-	$('.mixer-ing-highlight').removeClass('mixer-ing-highlight');
-	$('.mixer-ing-nonhighlight').removeClass('mixer-ing-nonhighlight');
-	runOnEnterExit(elem, center)	
-	cocktailOptimizeFlag = true;
+	$('.ingredient-highlight').removeClass('ingredient-highlight ingredient-nonhighlight').addClass('ingredient');
+	$('.ingredient-nonhighlight').removeClass('ingredient-nonhighlight').addClass('ingredient')
+	runOnEnterExit(elem, center);
 }
 
 /**
@@ -1206,7 +1224,8 @@ function runOnEnterExit(elem, center){
 	
 	//re-position the element so that its center maintains fixed
 	$(elem).offset({left:center.left-ctW/2, top:center.top -ctH/2});
-	setTimeout(drawDrinkCanvas, 10);
+	setIngredientPositions();
+	setTimeout(drawDrinkCanvas, 1);
 }
 
 /*****************************************
@@ -1297,9 +1316,6 @@ function addAtoColor(c, a){
 	var g = c.slice(0, c.indexOf(','));
 	c = c.slice(c.indexOf(' ')+1);
 	var b = c.slice(0, c.indexOf(')'));
-
-	console.log("r="+r, "g="+g,"b="+ b);
-	console.log('rgba(' + Math.round(r*a) +','+ Math.round(g*a) +','+ Math.round(b*a) +','+'1)');
 	return 'rgba(' + Math.round(r*a) +','+ Math.round(g*a) +','+ Math.round(b*a) +','+'1)';
 }
 
