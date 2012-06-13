@@ -61,7 +61,7 @@ var mouseOverReady = false;
 var optimize = true;
 var maxRecursiveDepth = 15;
 var minPercentChange = 4;
-var interactionMatrix = new D2Array(1,1);
+var interactionMatrix = new D2Array(1,0.5);
 
 var cocktailOptimizeFlag = false;
 var ingredientOptimizeFlag = false;
@@ -352,7 +352,7 @@ function ingredientDropped(event, item){
 			moveNewIngredientToOptimum(item);
 			positionNewCocktails(cocktailsAdded);
 			ingredientOptimizeFlag = true;
-			cocktailOptimizeFlag = true;
+			//cocktailOptimizeFlag = true;
 		}		
 		$(item).unbind('mouseenter mouseleave click');
 	}	
@@ -418,7 +418,7 @@ function loadCocktails(){
 						
 					},
 					drag: function() {
-						optimizeCtPositionsForce();
+						//optimizeCtPositionsForce();
 						//cocktailOptimizeFlag = true;
 						drawDrinkCanvas();
 					},
@@ -608,23 +608,35 @@ function setElementPositions(doOptimize){
 	
 	if(optimize){
 		//probably should disable the ability to add any more ingredients
-		setTimeout(function(){startOptimization(0, lIndexes, mIndexes, Infinity, Infinity)},1);	//never return here
+		setTimeout(function(){startOptimization(0, lIndexes, mIndexes, Infinity, Infinity, 0)},1);	//never return here
 	}
 }
 
-function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
+function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce, currentTriesAtScore){
 	
 	var maxTries = 100;
+	var maxNoChange = 5;
 	var minDiff = 0.999;
 	var newEff;
 	iteration=iteration + 1;
-	if(iteration>maxTries){
+	if(iteration>maxTries || currentTriesAtScore > 10){
 		ingredientOptimizeFlag = false;
+		cocktailOptimizeFlag = true;
+		var cocktails = $('.cocktail').get();
+		var ctAdded = new Array();
+		for (var c = 0; c < cocktails.length; c++){
+			ctAdded[c] = cocktailDB[$(cocktails[c]).data("dbIndex")];
+		}
+		positionNewCocktails(ctAdded);
 	}
 	
 	if(ingredientOptimizeFlag){
 		newEff = optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEff, (maxTries - iteration)/maxTries);
 		if(newEff <= oldEff){
+			if(newEff >= oldEff)
+				currentTriesAtScore++;
+			else
+				currentTriesAtScore = 0;
 			oldEff = newEff;
 			//update new positions
 			var mixers = $('.mixer-ing').get();
@@ -649,7 +661,7 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
 			}
 			setIngredientPositions();
 		}else{
-			ingredientOptimizeFlag = false;
+			//ingredientOptimizeFlag = false;
 		}
 	}
 	
@@ -666,7 +678,8 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce){
 
 	//do i need this?
 	if(ingredientOptimizeFlag || cocktailOptimizeFlag){
-		setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce)}, 10);
+		//setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce, currentTriesAtScore)}, 10);
+		startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce, currentTriesAtScore);
 	}else{
 		mouseOverReady = true;
 	}
@@ -678,12 +691,12 @@ function optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEffNum, dista
 	var tempValue;
 	var newEffNum;
 	
-	var distance = Math.round(lIndexes.length*distancePercent);
+	var distance = Math.ceil(lIndexes.length*distancePercent);
 	for(i = 0; i<lIndexes.length; i++){
 		//get a random swappable index
 		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - lIndexes.length+distance)), 
 								Math.max(Math.min(i+1,lIndexes.length-1), Math.min(lIndexes.length-1, i+lIndexes.length-distance)));
-		if(interactionMatrix.grab(lIndexes[i], lIndexes[i])>0 && interactionMatrix.grab(lIndexes[randomI], lIndexes[randomI])>0){ 		
+		if(interactionMatrix.grab(lIndexes[i], lIndexes[i])>0 || interactionMatrix.grab(lIndexes[randomI], lIndexes[randomI])>0){ 		
 			tempValue = lIndexes[randomI];
 			lIndexes[randomI] = lIndexes[i];
 			lIndexes[i] = tempValue;
@@ -703,7 +716,7 @@ function optimizeIngredientOrder(iteration, lIndexes, mIndexes, oldEffNum, dista
 		//get a random swappable index
 		randomI = getRandomInt(Math.min(Math.max(0,i-1), Math.max(0, i - mIndexes.length+distance)), 
 								Math.max(Math.min(i+1,mIndexes.length-1), Math.min(mIndexes.length-1, i+mIndexes.length-distance)));
-		if(interactionMatrix.grab(mIndexes[i], mIndexes[i])>0 && interactionMatrix.grab(mIndexes[randomI], mIndexes[randomI])>0){
+		if(interactionMatrix.grab(mIndexes[i], mIndexes[i])>0 || interactionMatrix.grab(mIndexes[randomI], mIndexes[randomI])>0){
 			tempValue = mIndexes[randomI];
 			mIndexes[randomI] = mIndexes[i];
 			mIndexes[i] = tempValue;
@@ -1040,8 +1053,8 @@ function optimizeCtPositionsForce(){
 	var centerPos, centerPos2;
 	var cocktail;
 	
-	var ingFactor = 1000;
-	var cocktailFactor = 10;
+	var ingFactor = 0;
+	var cocktailFactor = 100;
 	
 	//calculate forces 
 	for(i=0; i<cocktails.length; i++){
@@ -1056,7 +1069,7 @@ function optimizeCtPositionsForce(){
 			centerPos2 = [$(ingStr).offset().left, $(ingStr).offset().top + $(ingStr).height()/2];
 			f = calcForce(centerPos, centerPos2);
 			forces[i].Fx = forces[i].Fx - f.Fx*ingFactor;
-			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor;
+			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor * 0;
 		}
 		
 		for(var l = 0; l<cocktail.mixers.length; l++){
@@ -1064,7 +1077,7 @@ function optimizeCtPositionsForce(){
 			centerPos2 = [$(ingStr).offset().left, $(ingStr).offset().top + $(ingStr).height()/2];
 			f = calcForce(centerPos, centerPos2);
 			forces[i].Fx = forces[i].Fx - f.Fx*ingFactor;
-			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor;
+			forces[i].Fy = forces[i].Fy - f.Fy*ingFactor * 0;
 		}
 	
 		
@@ -1073,7 +1086,7 @@ function optimizeCtPositionsForce(){
 				centerPos2 = [$(cocktails[j]).offset().left+$(cocktails[j]).width()/2, $(cocktails[j]).offset().top + $(cocktails[j]).height()/2];
 				f = calcForce(centerPos, centerPos2);
 				forces[i].Fx = forces[i].Fx + f.Fx*cocktailFactor;
-				forces[i].Fy = forces[i].Fy + f.Fy*cocktailFactor;
+				forces[i].Fy = forces[i].Fy + f.Fy*cocktailFactor * 0 ;
 				
 			}
 		}
@@ -1200,6 +1213,30 @@ function runOnEnterExit(elem, center){
 HELPER FUNCTIONS
 */////////////////////////////////////////
 
+function checkForOverlap(elem1, elem2){
+	var e1x1, e1y1, e1x2, e1y2, e2x1, e2y1, e2x2, e2y2;
+	e1left = $(elem1).offset().left;
+	e1top = $(elem1).offset().top;
+	e1right = e1left + $(elem1).width();
+	e1bottom = e1top + $(elem1).height();
+	
+	e2left = $(elem2).offset().left;
+	e2top = $(elem2).offset().top;
+	e2right = e2left + $(elem2).width();
+	e2bottom = e2top + $(elem2).height();
+	
+	if(e1right < e2left)
+		return false;
+	if(e1left > e2right)
+		return false;
+	if(e1bottom < e2top)
+		return false;
+	if(e1top > e2bottom)
+		return false;
+		
+	return true;
+}
+
 /**
 * Given a value in a range, return a color
 */
@@ -1265,7 +1302,6 @@ function addAtoColor(c, a){
 	console.log('rgba(' + Math.round(r*a) +','+ Math.round(g*a) +','+ Math.round(b*a) +','+'1)');
 	return 'rgba(' + Math.round(r*a) +','+ Math.round(g*a) +','+ Math.round(b*a) +','+'1)';
 }
-
 
 /** 
 * Draws a smooth S shaped curve between two points
@@ -1339,8 +1375,10 @@ function getRandomInt (min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/**
 //Sorts the array V
 //Randomly swaps elements with the same value to minimize same answers
+*/
 function sortWithIndex(values) {
 	var v = new Array(values.length);
 	var indexArray = new Array(values.length);
