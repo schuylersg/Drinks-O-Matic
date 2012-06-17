@@ -113,11 +113,6 @@
 	.ingredient-highlight{
 		font-size:125%;
 	}
-
-	.cocktail-container{
-		position:absolute;
-		font-family:SWRomnd;
-	}
 	
 	.cocktail{
 		position:absolute;	
@@ -126,7 +121,7 @@
 	}
 	
 	.cocktail-normal{
-		font-size:1em;
+		font-size:0.8em;
 		color:white;
 		margin:5px;
 		padding:2px 5px;
@@ -134,7 +129,7 @@
 	}
 	
 	.cocktail-highlight{
-		font-size:1.2em;
+		font-size:1em;
 		color:white;
 		margin:5px;
 		padding:2px 5px;
@@ -142,7 +137,7 @@
 	}
 	
 	.cocktail-nonhighlight{
-		font-size:1em;
+		font-size:0.8em;
 		color:white;
 		margin:5px;
 		padding:2px 5px;
