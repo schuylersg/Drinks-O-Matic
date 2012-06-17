@@ -13,9 +13,9 @@ var ctNormalLineWidth = 2; //px for line width
 var ctHighlightLineWidth = 4;
 var ctNonHighlightLineWidth = 2;
 
-var ctNormalLineAlpha = 1;
+var ctNormalLineAlpha = 0.4;
 var ctHighlightLineAlpha = 1;
-var ctNonHighlightLineAlpha = 0.3;
+var ctNonHighlightLineAlpha = 0.2;
 
 var ctNormalBoxAlpha = 1;
 var ctHighlightBoxAlpha = 1;
@@ -264,7 +264,6 @@ Cocktail.prototype.hasIngredient = function(iName){
 /********************************************************/
 
 $(window).resize(function() {
-	console.log("resizing");
 	ingredientOptimizeFlag = true;
   	setTimeout(setElementPositions,10);
 });
@@ -526,7 +525,6 @@ function loadCocktails(){
 	return cocktailsAdded;
 }
 
-
 //try putting new ingredient in all positions to see what optimum is
 function moveNewIngredientToOptimum(item){
 	
@@ -596,23 +594,19 @@ function positionNewCocktails(cocktailsAdded){
 	for(var c = 0; c<cocktailsAdded.length; c++){
 		left = 0;
 		top = 0;
-		console.log(cocktailsAdded[c].name);
 		for(l=0; l<cocktailsAdded[c].liquors.length; l++){ 
 			offset = $("#" + cocktailsAdded[c].liquors[l].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_")).offset();
 			left = left + offset.left;
 			top = top + offset.top;
-			console.log(cocktailsAdded[c].liquors[l], offset.top);
 		}
 			
 		for(m =0; m<cocktailsAdded[c].mixers.length; m++){ 
 			offset = $("#" + cocktailsAdded[c].mixers[m].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_")).offset();
 			left = left + offset.left;
 			top = top + offset.top;
-			console.log(cocktailsAdded[c].mixers[m], offset.top);
 		}
 		var ctStr = "#" + cocktailsAdded[c].name.replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 		$(ctStr).offset({left:$('#drink-canvas').width()/2, top:top/(cocktailsAdded[c].liquors.length + cocktailsAdded[c].mixers.length)});
-		console.log($(ctStr).offset().top);
 	}
 }
 
@@ -1012,7 +1006,7 @@ function writeCocktailsAndPaths(){
 		
 		//draw lines to each liquor
 		for(var i=0; i<ctInfo.liquors.length; i++){
-			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
+			ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNormalLineAlpha);
 			var ingStr = "#" + ctInfo.liquors[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
@@ -1024,7 +1018,7 @@ function writeCocktailsAndPaths(){
 		
 		//draw lines to each mixer
 		for(var i=0; i<ctInfo.mixers.length; i++){
-			ctx.strokeStyle = $(this).css("background-color");//addAtoColor(ctInfo.color, alpha);
+			ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNormalLineAlpha);
 			var ingStr = "#" + ctInfo.mixers[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			ingPos = $(ingStr).offset();
 			var ingWidth = $(ingStr).outerWidth();
@@ -1035,9 +1029,9 @@ function writeCocktailsAndPaths(){
 		}
 	});
 	
-	//var linesToDrawOnTop = new Array();
-	//var 
-	//var colorOfLines = new Arra();
+	var linesToDrawOnTop = new Array();
+	var strokeStyles = new Array();
+	var colorOfLines = new Arra();
 	
 	//draw all lines to "highlighted" coctails
 	ctx.lineWidth = ctHighlightLineWidth;
@@ -1054,17 +1048,20 @@ function writeCocktailsAndPaths(){
 			if($(ingStr).hasClass('ingredient-nonhighlight')){
 				ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNonHighlightLineAlpha);
 				ctx.lineWidth = ctNonHighlightLineWidth;
+				ingPos = $(ingStr).offset();
+				var ingWidth = $(ingStr).outerWidth();
+				var ingHeight = $(ingStr).outerHeight();
+				drawSCurve(ingPos.left + ingWidth + ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
+					ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
+					'h', curviness);
 			}else{
-				ctx.strokeStyle = $(this).css("background-color")
-				ctx.lineWidth = ctHighlightLineWidth;
+				strokeStyles.push($(this).css("background-color"));
+				ingPos = $(ingStr).offset();
+				var ingWidth = $(ingStr).outerWidth();
+				var ingHeight = $(ingStr).outerHeight();
+				linesToDrawOnTop.push(new Array(ingPos.left + ingWidth + ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
+					ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top);
 			}
-			
-			ingPos = $(ingStr).offset();
-			var ingWidth = $(ingStr).outerWidth();
-			var ingHeight = $(ingStr).outerHeight();
-			drawSCurve(ingPos.left + ingWidth + ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
-				ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
-				'h', curviness);
 		}
 		
 		for(var i=0; i<ctInfo.mixers.length; i++){
@@ -1072,21 +1069,25 @@ function writeCocktailsAndPaths(){
 			if($(ingStr).hasClass('ingredient-nonhighlight')){
 				ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNonHighlightLineAlpha);
 				ctx.lineWidth = ctNonHighlightLineWidth;
+				ingPos = $(ingStr).offset();
+				var ingWidth = $(ingStr).outerWidth();
+				var ingHeight = $(ingStr).outerHeight();
+				drawSCurve(ctPos.left + ctWidth - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
+							ingPos.left - ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
+							'h', curviness);
 			}else{
-				ctx.strokeStyle = $(this).css("background-color")
-				ctx.lineWidth = ctHighlightLineWidth;
-			}
-			ingPos = $(ingStr).offset();
-			var ingWidth = $(ingStr).outerWidth();
-			var ingHeight = $(ingStr).outerHeight();
-			drawSCurve(ctPos.left + ctWidth - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
-						ingPos.left - ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
-						'h', curviness);
-			}
+				strokeStyles.push($(this).css("background-color"));
+				ingPos = $(ingStr).offset();
+				var ingWidth = $(ingStr).outerWidth();
+				var ingHeight = $(ingStr).outerHeight();
+				linesToDrawyOnTop.push(ctPos.left + ctWidth - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
+							ingPos.left - ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top);
+			}			
+		}
 	});
 }
 
-function ctCompare(a, b){
+function ctCompareTop(a, b){
 	return $(a).offset().top - $(b).offset().top
 }
 
@@ -1101,7 +1102,8 @@ function scaleElementsVertically(){
 	var index;
 	var last = 0;
 
-	cocktails.sort(ctCompare);
+	//sort the cocktails by their offset.top
+	cocktails.sort(ctCompareTop);
 		
 	for(var c = 0; c < cocktails.length; c++){
 		$(cocktails[c]).data("verticalPos", c);
@@ -1111,32 +1113,37 @@ function scaleElementsVertically(){
 	}
 	
 	var overlap;
-	
-	for (var b = 0; b < cocktails.length; b++){
-		for(var c = 0; c < cocktails.length; c++){
-			if($(cocktails[c]).data("verticalPos") == b){
-				for(var d = 0; d < cocktails.length; d++){	
-					if($(cocktails[d]).data("verticalPos") == b+1){
-						if(checkForOverlap(cocktails[c], cocktails[d])){
-							if($(cocktails[d]).offset().left+$(cocktails[d]).width()/2 < $(cocktails[c]).offset().left+$(cocktails[c]).width()/2){ //bottom is to the left
-								overlap = $(cocktails[d]).offset().left + $(cocktails[d]).outerWidth() - $(cocktails[c]).offset().left + 10;
-								$(cocktails[d]).offset({left:$(cocktails[d]).offset().left - overlap/2, top:$(cocktails[d]).offset().top});
-								$(cocktails[c]).offset({left:$(cocktails[c]).offset().left + overlap/2, top:$(cocktails[c]).offset().top});
-							}else{
-								overlap = $(cocktails[c]).offset().left + $(cocktails[c]).outerWidth() - $(cocktails[d]).offset().left + 10; 
-								$(cocktails[d]).offset({left:$(cocktails[d]).offset().left + overlap/2, top:$(cocktails[d]).offset().top});
-								$(cocktails[c]).offset({left:$(cocktails[c]).offset().left - overlap/2, top:$(cocktails[c]).offset().top});						
-							}
-						break;
-						}
+	var sideSum;
+	var randomSide = [-1, 1];
+	var sorting = true;
+	var iterations = 0;
+	//cocktails are still sorted by vertical position
+	while(sorting && iterations<10){
+		sorting=false;
+		iterations = iterations + 1;
+		for(var c = 0; c < cocktails.length-1; c++){
+			for(var d = c+1; d < cocktails.length; d++){	
+				if(checkForOverlap(cocktails[c], cocktails[d], 2, ($(cocktails[c]).outerWidth() + $(cocktails[d]).outerWidth())*0.2)){
+					sorting=true;
+					sideSum = cocktailDB[$(cocktails[d]).data("dbIndex")].mixers.length - cocktailDB[$(cocktails[c]).data("dbIndex")].mixers.length 
+							- cocktailDB[$(cocktails[d]).data("dbIndex")].liquors.length + cocktailDB[$(cocktails[c]).data("dbIndex")].liquors.length;
+					(sideSum == 0) ? sideSum = randomSide[getRandomInt(0,1)]: 0;
+					if(sideSum < 0){ //bottom is to the left
+						overlap = $(cocktails[d]).offset().left + $(cocktails[d]).outerWidth() - $(cocktails[c]).offset().left + 
+							($(cocktails[c]).outerWidth() + $(cocktails[d]).outerWidth())*0.2;
+						$(cocktails[d]).offset({left:$(cocktails[d]).offset().left - overlap/2, top:$(cocktails[d]).offset().top});
+						$(cocktails[c]).offset({left:$(cocktails[c]).offset().left + overlap/2, top:$(cocktails[c]).offset().top});
+					}else{
+						overlap = $(cocktails[c]).offset().left + $(cocktails[c]).outerWidth() - $(cocktails[d]).offset().left + 
+							($(cocktails[c]).outerWidth() + $(cocktails[d]).outerWidth())*0.2; 
+						$(cocktails[d]).offset({left:$(cocktails[d]).offset().left + overlap/2, top:$(cocktails[d]).offset().top});
+						$(cocktails[c]).offset({left:$(cocktails[c]).offset().left - overlap/2, top:$(cocktails[c]).offset().top});						
 					}
 				}
-				break;
 			}
 		}
 	}
 }
-
 /**calculate the actual x,y positions of all ingredients on the canvas
 * based on their data - order
 * this should be called any time the order of ingredients is changed
@@ -1268,7 +1275,6 @@ function ctMouseEnter(elem){
 		else
 			$(mixers[l]).addClass('ingredient-nonhighlight');
 	}
-	
 	runOnEnterExit(elem, center);
 }
 
@@ -1301,7 +1307,7 @@ function runOnEnterExit(elem, center){
 HELPER FUNCTIONS
 */////////////////////////////////////////
 
-function checkForOverlap(elem1, elem2){
+function checkForOverlap(elem1, elem2, vOffset, hOffset){
 	var e1x1, e1y1, e1x2, e1y2, e2x1, e2y1, e2x2, e2y2;
 	e1left = $(elem1).offset().left;
 	e1top = $(elem1).offset().top;
@@ -1313,13 +1319,13 @@ function checkForOverlap(elem1, elem2){
 	e2right = e2left + $(elem2).outerWidth();
 	e2bottom = e2top + $(elem2).outerHeight();
 	
-	if(e1right < e2left)
+	if(e1right + hOffset < e2left)
 		return false;
-	if(e1left > e2right)
+	if(e1left > e2right + hOffset)
 		return false;
-	if(e1bottom < e2top)
+	if(e1bottom + vOffset < e2top)
 		return false;
-	if(e1top > e2bottom)
+	if(e1top > e2bottom + vOffset)
 		return false;
 		
 	return true;

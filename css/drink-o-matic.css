@@ -6,6 +6,7 @@
 	div{
 		font-family:SWRomnd;
 		white-space: nowrap;
+		cursor:pointer;
 	}
 	
 	.ing-menu {
@@ -107,7 +108,7 @@
 
 	.ingredient-nonhighlight{
 		font-size:100%;
-		color:RGB(25, 25, 25);
+		color:RGB(50, 50, 50);
 	}
 	
 	.ingredient-highlight{
