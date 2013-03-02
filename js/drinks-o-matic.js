@@ -57,7 +57,6 @@ var ingredientSelected = null;
 var canvas;
 var ingOptimizationWeights = [1, 1];
 var cocktailSelected = null;
-var mouseOverReady = false;
 var optimize = true;
 var maxRecursiveDepth = 15;
 var minPercentChange = 4;
@@ -233,7 +232,19 @@ function Cocktail(name){
 }
 
 Cocktail.prototype.toString = function(){
-	var str = this.name;
+	var str = "<h3>" + this.name + '</h3>';
+	for (var l = 0; l < this.liquors.length; l++){
+		str = str + this.liquors[l] + '\t' + this.lAmount[l] + '<br />';
+	}
+	for (var m = 0; m < this.mixers.length; m++){
+		str = str + this.mixers[m] + '\t' + this.mAmount[m] + '<br />';
+	}
+	for (var g = 0; g < this.garnishes.length; g++){
+		str = str + this.garnishes[g] + '<br />';
+	}
+	
+	str = str + "Glass: " + this.glass;
+	
 	return str;
 };
 
@@ -264,6 +275,7 @@ Cocktail.prototype.hasIngredient = function(iName){
 /********************************************************/
 
 $(window).resize(function() {
+	busy = true;
 	ingredientOptimizeFlag = true;
   	setTimeout(setElementPositions,10);
 });
@@ -276,6 +288,8 @@ $(document).ready(function() {
 	
 	//disable the ability to select text
 	$("div").disableSelection();
+	
+	$("#recipe-close").click(function(){$("#cocktail-recipe").removeClass("recipe-show").addClass("recipe-hide")});
 	
 	//load the cocktail database
 	loadCocktailDB();
@@ -358,7 +372,7 @@ $(document).ready(function() {
 //	1. ingredient being dropped from menu onto canvas - need to then add ingredient to canvas
 function ingredientDropped(event, item){
 	//if it was a cocktail, do nothing
-	if($(item).hasClass("cocktail"))
+	if($(item).hasClass("cocktail") || busy)
 		return;
 		
 	var iType;
@@ -367,6 +381,7 @@ function ingredientDropped(event, item){
 	
 	//Check if this is a newly dropped item from the menu
 	if($(item).hasClass("menu-item")){		
+		busy = true;
 		//remove style information
 		$(item).off();
 		var itemID = "#" + $(item).text().replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
@@ -488,7 +503,7 @@ function loadCocktails(){
 						
 			$(ctStr).mouseenter(function(){ctMouseEnter(this)});
 			$(ctStr).mouseleave(function(){ctMouseExit(this)});					
-			$(ctStr).click(function (){});
+			$(ctStr).click(function (){cocktailClicked(this)});
 			var col = returnRGB(c,cocktails.length, 1);
 			$(ctStr).css("background-color", col.text);
 			$(ctStr).css("color", invertColor(col).text);
@@ -523,6 +538,14 @@ function loadCocktails(){
 	}
 	
 	return cocktailsAdded;
+}
+
+function cocktailClicked(ct){
+	$('#cocktail-recipe').html(cocktailDB[$(ct).data("dbIndex")].toString()+$('#cocktail-recipe').html());
+	var os = $(ct).offset();
+	$('#cocktail-recipe').removeClass("recipe-hide").addClass("recipe-show");
+	$('#cocktail-recipe').offset({left:os.left + $(ct).width()/2 - $('#cocktail-recipe').outerWidth()/2, top:os.top + $(ct).outerHeight() + 3});
+
 }
 
 //try putting new ingredient in all positions to see what optimum is
@@ -667,8 +690,6 @@ function setElementPositions(doOptimize){
 		doOptimize = true;
 	}
 	
-	mouseOverReady = false;
-	
 	var cH, cW, i, j;
 	
 	sizeAndPositionMainElements();
@@ -716,6 +737,7 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce, curr
 		scaleElementsVertically();
 		drawDrinkCanvas();
 		ingredientOptimizeFlag = false;
+		busy = false;
 	}
 	
 	if(ingredientOptimizeFlag){
@@ -756,9 +778,6 @@ function startOptimization(iteration, lIndexes, mIndexes, oldEff, oldForce, curr
 	//do i need this?
 	if(ingredientOptimizeFlag){// || cocktailOptimizeFlag){
 		setTimeout(function(){startOptimization(iteration, lIndexes, mIndexes, oldEff, 0, currentTriesAtScore)}, 1);
-		//startOptimization(iteration, lIndexes, mIndexes, oldEff, newForce, currentTriesAtScore);
-	}else{
-		mouseOverReady = true;
 	}
 	return;
 }	
@@ -1031,22 +1050,22 @@ function writeCocktailsAndPaths(){
 	
 	var linesToDrawOnTop = new Array();
 	var strokeStyles = new Array();
-	var colorOfLines = new Arra();
 	
 	//draw all lines to "highlighted" coctails
 	ctx.lineWidth = ctHighlightLineWidth;
-	$('.cocktail-highlight').each(function(index) {
-		var canPos = $("#drink-canvas").offset();
-		var ctInfo = cocktailDB[$(this).data("dbIndex")];	//retrieve the cocktail info from the element
+	var hlCt = $('.cocktail-highlight').get();
+	var canPos = $("#drink-canvas").offset();
+	for(var c = 0; c < hlCt.length; c++) {
+		var ctInfo = cocktailDB[$(hlCt[c]).data("dbIndex")];	//retrieve the cocktail info from the element
 		var alpha = ctHighlightLineAlpha;
-		var ctPos = $(this).offset();
-		var ctWidth = $(this).innerWidth();
-		var ctHeight = $(this).outerHeight(false);
+		var ctPos = $(hlCt[c]).offset();
+		var ctWidth = $(hlCt[c]).innerWidth();
+		var ctHeight = $(hlCt[c]).outerHeight(false);
 		
 		for(var i=0; i<ctInfo.liquors.length; i++){
 			var ingStr = "#" + ctInfo.liquors[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			if($(ingStr).hasClass('ingredient-nonhighlight')){
-				ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNonHighlightLineAlpha);
+				ctx.strokeStyle = addAtoColor($(hlCt[c]).css("background-color"), ctNonHighlightLineAlpha);
 				ctx.lineWidth = ctNonHighlightLineWidth;
 				ingPos = $(ingStr).offset();
 				var ingWidth = $(ingStr).outerWidth();
@@ -1055,19 +1074,19 @@ function writeCocktailsAndPaths(){
 					ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
 					'h', curviness);
 			}else{
-				strokeStyles.push($(this).css("background-color"));
+				strokeStyles.push($(hlCt[c]).css("background-color"));
 				ingPos = $(ingStr).offset();
 				var ingWidth = $(ingStr).outerWidth();
 				var ingHeight = $(ingStr).outerHeight();
 				linesToDrawOnTop.push(new Array(ingPos.left + ingWidth + ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
-					ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top);
+					ctPos.left - canPos.left, ctPos.top+ctHeight/2 - canPos.top));
 			}
 		}
 		
 		for(var i=0; i<ctInfo.mixers.length; i++){
 			var ingStr = "#" + ctInfo.mixers[i].replace(/ /gi, "_").replace(/'/gi, "_").replace(/\./gi, "_");
 			if($(ingStr).hasClass('ingredient-nonhighlight')){
-				ctx.strokeStyle = addAtoColor($(this).css("background-color"), ctNonHighlightLineAlpha);
+				ctx.strokeStyle = addAtoColor($(hlCt[c]).css("background-color"), ctNonHighlightLineAlpha);
 				ctx.lineWidth = ctNonHighlightLineWidth;
 				ingPos = $(ingStr).offset();
 				var ingWidth = $(ingStr).outerWidth();
@@ -1076,15 +1095,25 @@ function writeCocktailsAndPaths(){
 							ingPos.left - ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top, 
 							'h', curviness);
 			}else{
-				strokeStyles.push($(this).css("background-color"));
+				strokeStyles.push($(hlCt[c]).css("background-color"));
 				ingPos = $(ingStr).offset();
 				var ingWidth = $(ingStr).outerWidth();
 				var ingHeight = $(ingStr).outerHeight();
-				linesToDrawyOnTop.push(ctPos.left + ctWidth - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
-							ingPos.left - ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top);
+				linesToDrawOnTop.push(new Array(ctPos.left + ctWidth - canPos.left, ctPos.top+ctHeight/2 - canPos.top,
+					ingPos.left - ingTextMargin - canPos.left, ingPos.top + ingHeight/2 - canPos.top));
 			}			
 		}
-	});
+	}
+	var j;
+	ctx.lineWidth = ctHighlightLineWidth;
+	console.log(strokeStyles);
+	console.log(linesToDrawOnTop);
+	for(var s = 0; s < strokeStyles.length; s++){
+		ctx.strokeStyle = strokeStyles[s];
+		j = linesToDrawOnTop[s];
+		console.log(j);
+		drawSCurve(j[0], j[1], j[2], j[3], 'h', curviness);
+	}
 }
 
 function ctCompareTop(a, b){

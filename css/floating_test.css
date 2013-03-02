@@ -1,0 +1,11 @@
+
+.floating_div{
+	position:absolute;
+	left:100px;
+	top:150px;
+
+}
+
+.floating_container{
+	position:absolute;
+}
